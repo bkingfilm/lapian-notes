@@ -27,11 +27,17 @@
 
 ## 快速开始
 
-要求：
+### 不懂编程？三步就能用（Windows）
 
-- Node.js 18+
-- Chrome 内核浏览器（Chrome / Edge）
-- [ffmpeg](https://ffmpeg.org/)（可选。装了才有 RMVB/AVI/HEVC 等格式的自动转码，H.264 MP4 不需要）
+1. **下载**：点本页面绿色的「Code」按钮，选「Download ZIP」
+2. **解压**：右键下载的压缩包，选「全部解压缩」
+3. **双击解压后文件夹里的 `run.bat`**
+
+第一次双击会自动准备运行环境和程序组件（电脑上没装过 Node.js 也没关系，会自动下载便携版，共约几分钟；之后每次都是秒开），完成后浏览器自动打开工具页面。使用期间会有一个最小化的"node"服务窗口，不要关它；用完关掉它就是退出。
+
+### 开发者
+
+要求：Node.js 18+，Chrome 内核浏览器（Chrome / Edge）。[ffmpeg](https://ffmpeg.org/) 可选，装了才有 RMVB/AVI/HEVC 等格式的自动转码，H.264 MP4 不需要。
 
 ```bash
 npm install
@@ -40,7 +46,7 @@ npm run dev
 
 浏览器打开终端提示的地址（默认 http://localhost:5173）。
 
-> 注意：自动转码和自动搜索字幕由 dev server 的本地接口提供，必须用 `npm run dev` 运行才有完整功能。静态部署（`npm run build` 产物）时这两项会降级为手动操作，其余功能不受影响。
+> 注意：自动转码和自动搜索字幕由 dev server 的本地接口提供，必须用 `npm run dev`（或启动脚本）运行才有完整功能。静态部署（`npm run build` 产物）时这两项会降级为手动操作，其余功能不受影响。
 
 ## 数据存储
 

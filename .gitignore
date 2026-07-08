@@ -28,3 +28,10 @@ dist-ssr
 .agents
 .codex
 .claude
+
+# 一键启动的运行时产物
+.node
+.node-tmp
+install.log
+server.log
+server-err.log
