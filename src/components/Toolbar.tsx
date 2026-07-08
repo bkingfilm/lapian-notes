@@ -48,14 +48,18 @@ export function Toolbar(props: ToolbarProps) {
 
         <div className="tool-section">
           <span>② 发给 AI</span>
-          <button disabled={!canGenerateAiPackage} title="打包截图和字幕,发给 ChatGPT 等任意 AI" onClick={props.onGenerateAiPackage}>
+          <button disabled={!canGenerateAiPackage} title="必选:打包截图和字幕,发给 ChatGPT 等任意 AI" onClick={props.onGenerateAiPackage}>
+            <em className="required-star">*</em>
             生成 AI 分析包
           </button>
         </div>
 
         <div className="tool-section">
           <span>③ 导回结果</span>
-          <button disabled={!hasExportableContent || props.isTaskRunning} title="选择 AI 返回的 JSON,生成剧情时间轴" onClick={props.onImportAiResult}>导入 AI 结果</button>
+          <button disabled={!hasExportableContent || props.isTaskRunning} title="必选:选择 AI 返回的 JSON,生成剧情时间轴" onClick={props.onImportAiResult}>
+            <em className="required-star">*</em>
+            导入 AI 结果
+          </button>
         </div>
 
         <div className="tool-section">
