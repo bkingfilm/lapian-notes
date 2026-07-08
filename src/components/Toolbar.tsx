@@ -4,7 +4,7 @@ import { hasMeaningfulProjectContent } from '../lib/project'
 interface ToolbarProps {
   project: Project
   isTaskRunning: boolean
-  onOpenProjectPackage: () => void
+  onOpenLibrary: () => void
   onSaveProjectPackage: () => void
   onVideoPath: () => void
   onSubtitle: () => void
@@ -54,10 +54,10 @@ export function Toolbar(props: ToolbarProps) {
         </div>
 
         <div className="tool-section tool-section-secondary">
-          <span>项目文件</span>
-          <button title="打开保存的项目 ZIP,继续之前的拉片" onClick={props.onOpenProjectPackage}>打开</button>
+          <span>项目</span>
+          <button title="查看所有电影项目,一键切换;也可以从 ZIP 导入" onClick={props.onOpenLibrary}>我的项目</button>
           <button disabled={!hasExportableContent} title="把当前项目导出为自包含 ZIP(笔记+截图),备份或换电脑用" onClick={props.onSaveProjectPackage}>
-            保存
+            备份 ZIP
           </button>
         </div>
       </div>

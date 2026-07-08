@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { Toolbar } from './components/Toolbar'
 import { FrameTimeline } from './components/FrameTimeline'
 import { InspectorPanel } from './components/InspectorPanel'
+import { ProjectLibrary } from './components/ProjectLibrary'
 import { WorkflowGuide } from './components/WorkflowGuide'
 import type {
   AiWriteMode,
@@ -20,6 +21,7 @@ import { cleanSubtitles, fetchAutoSubtitle } from './lib/autoSubtitle'
 import { probeVideoPlayable, transcodeVideo } from './lib/transcode'
 import { loadAutosave, saveAutosave, clearAutosave } from './lib/autosave'
 import { clearProjectFrameImages, restoreProjectFrameImages, saveProjectFrameImages } from './lib/frameStore'
+import { deleteLibraryProject, listLibraryProjects, loadLibraryProject, saveProjectToLibrary, type ProjectSummary } from './lib/projectStore'
 import { getProjectStoryLines } from './lib/storyLines'
 import { secondsToTimecode } from './lib/timecode'
 import { exportMarkdown, exportScreenplayText } from './lib/markdown'
@@ -59,6 +61,7 @@ export default function App() {
   const [markdownPreview, setMarkdownPreview] = useState<string | null>(null)
   const [aiImportText, setAiImportText] = useState('')
   const [isAiImportOpen, setIsAiImportOpen] = useState(false)
+  const [libraryProjects, setLibraryProjects] = useState<ProjectSummary[] | null>(null)
   const [frameRangeStartId, setFrameRangeStartId] = useState<string | null>(null)
   const [frameRangeEndId, setFrameRangeEndId] = useState<string | null>(null)
 
@@ -152,6 +155,7 @@ export default function App() {
       } else {
         setStatus('自动保存失败：本地存储空间不足，请手动“保存项目”导出 ZIP。')
       }
+      void saveProjectToLibrary(project).catch(() => undefined)
     }, 1000)
     return () => window.clearTimeout(timer)
   }, [project])
@@ -203,12 +207,66 @@ export default function App() {
     setFrameRangeEndId(endFrameId ?? startFrameId)
   }
 
+  async function handleOpenLibrary() {
+    try {
+      setLibraryProjects(await listLibraryProjects())
+    } catch {
+      setLibraryProjects([])
+      setStatus('读取项目库失败。')
+    }
+  }
+
+  async function handleSwitchProject(id: string) {
+    try {
+      await saveProjectToLibrary(project).catch(() => undefined)
+      const target = await loadLibraryProject(id)
+      if (!target) {
+        setStatus('这个项目读取失败，可能已损坏。')
+        return
+      }
+      revokeFrameObjectUrls(project.frames)
+      const restored = await restoreProjectFrameImages(target)
+      setProject(restored.project)
+      setSelection({ kind: 'none' })
+      resetSelection()
+      setMarkdownPreview(null)
+      setAiImportText('')
+      setIsAiImportOpen(false)
+      clearVideoFileReference()
+      setLibraryProjects(null)
+      setStatus(`已切换到「${target.projectTitle || target.filmTitle || '未命名项目'}」${restored.restoredCount ? `，找回 ${restored.restoredCount} 帧截图` : ''}。需要重新抽帧时再重新选择影片文件即可。`)
+    } catch (error) {
+      setStatus(`切换项目失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  async function handleDeleteLibraryProject(id: string) {
+    const item = libraryProjects?.find((entry) => entry.id === id)
+    if (!window.confirm(`删除项目「${item?.title ?? '未命名'}」？笔记和帧图缓存会一起删除，无法恢复。`)) return
+    try {
+      await deleteLibraryProject(id)
+      if (id === project.id) {
+        revokeFrameObjectUrls(project.frames)
+        clearAutosave()
+        setProject(createEmptyProject())
+        setSelection({ kind: 'none' })
+        resetSelection()
+        setLastSavedAt(null)
+      }
+      setLibraryProjects(await listLibraryProjects())
+      setStatus('项目已删除。')
+    } catch (error) {
+      setStatus(`删除失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
   function handleDeleteProject() {
     if (!window.confirm('删除当前项目后将清空项目内容、字幕和帧图数据，是否继续？想换电影不用删除，直接点「更换电影」即可。')) return
     const deletingProjectId = project.id
     clearProjectFrameImages(deletingProjectId).catch(() => {
       updateStatus('清理项目缓存图片失败。')
     })
+    void deleteLibraryProject(deletingProjectId).catch(() => undefined)
     clearAutosave()
     revokeFrameObjectUrls(project.frames)
     const next = createEmptyProject()
@@ -451,7 +509,7 @@ export default function App() {
     const willReplaceCurrentProject = Boolean(project.sourceVideoName || project.frames.length || project.subtitles.length || project.segments.length || project.macroAnalysis)
     if (
       willReplaceCurrentProject &&
-      !window.confirm('导入新电影会开始一个新项目，当前的时间轴、字幕、段落和分析会被清空。想保留当前项目：先点「取消」，再点右上角「保存」导出 ZIP。确定换电影？')
+      !window.confirm('导入新电影会开始一个新项目。当前项目已自动保存在「我的项目」里，随时可以切回。确定换电影？')
     ) {
       e.target.value = ''
       return
@@ -467,6 +525,7 @@ export default function App() {
       frameInterval: 1,
       updatedAt: new Date().toISOString(),
     }
+    void saveProjectToLibrary(project).catch(() => undefined)
     revokeFrameObjectUrls(project.frames)
     setProject(nextProject)
     setStatus(`已选择电影：${file.name}`)
@@ -1089,7 +1148,7 @@ export default function App() {
       <Toolbar
         project={project}
         isTaskRunning={isTaskRunning}
-        onOpenProjectPackage={() => pkgInputRef.current?.click()}
+        onOpenLibrary={handleOpenLibrary}
         onSaveProjectPackage={handleSaveProjectPackage}
         onVideoPath={() => videoInputRef.current?.click()}
         onSubtitle={() => subtitleInputRef.current?.click()}
@@ -1170,6 +1229,20 @@ export default function App() {
           {lastSavedAt ? `已自动保存 ${new Date(lastSavedAt).toLocaleTimeString('zh-CN', { hour12: false })}` : '尚未自动保存'}
         </span>
       </footer>
+
+      {libraryProjects !== null ? (
+        <ProjectLibrary
+          projects={libraryProjects}
+          currentProjectId={project.id}
+          onOpen={handleSwitchProject}
+          onDelete={handleDeleteLibraryProject}
+          onImportZip={() => {
+            setLibraryProjects(null)
+            pkgInputRef.current?.click()
+          }}
+          onClose={() => setLibraryProjects(null)}
+        />
+      ) : null}
 
       {markdownPreview ? (
         <section className="markdown-preview">
