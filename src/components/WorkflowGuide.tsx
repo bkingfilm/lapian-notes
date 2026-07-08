@@ -42,7 +42,7 @@ export function WorkflowGuide(props: WorkflowGuideProps) {
       state: hasSegments ? 'done' : hasFrames ? 'current' : 'todo',
       action:
         hasFrames && !hasSegments
-          ? { label: '重新生成分析包', onClick: props.onRegenerateAiPackage, disabled: props.isTaskRunning }
+          ? { label: '生成 AI 分析包', onClick: props.onRegenerateAiPackage, disabled: props.isTaskRunning }
           : undefined,
     },
     {

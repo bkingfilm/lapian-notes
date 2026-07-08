@@ -19,7 +19,7 @@ interface ToolbarProps {
 
 export function Toolbar(props: ToolbarProps) {
   const hasExportableContent = hasMeaningfulProjectContent(props.project)
-  const canGenerateAiPackage = Boolean(props.project.sourceVideoName && props.project.subtitles.length && !props.isTaskRunning)
+  const canGenerateAiPackage = Boolean(props.project.sourceVideoName && !props.isTaskRunning)
 
   return (
     <header className="toolbar">

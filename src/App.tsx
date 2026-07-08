@@ -264,10 +264,6 @@ export default function App() {
       setStatus('请先导入电影。')
       return
     }
-    if (!project.subtitles.length) {
-      setStatus('请先导入字幕，再生成 AI 分析包。')
-      return
-    }
     if (extractAbort || analysisAbort) {
       setStatus('当前有正在进行的任务。')
       return
@@ -282,7 +278,7 @@ export default function App() {
         sourceProject = rebuilt
       }
       const saved = await exportAiAnalysisPackage(sourceProject)
-      await announceAiPackageResult(saved)
+      await announceAiPackageResult(saved, sourceProject.subtitles.length === 0)
     } catch (error) {
       setStatus(`生成 AI 分析包失败：${error instanceof Error ? error.message : String(error)}`)
     }
@@ -633,24 +629,21 @@ export default function App() {
         if (signal.aborted) return
       }
     }
-    if (!working.subtitles.length) {
-      setStatus('抽帧完成，但没有找到匹配字幕。请手动导入字幕，再点“生成 AI 分析包”。')
-      return
-    }
     try {
       const saved = await exportAiAnalysisPackage(working)
-      announceAiPackageResult(saved)
+      await announceAiPackageResult(saved, working.subtitles.length === 0)
     } catch (error) {
       setStatus(`自动生成 AI 分析包失败：${error instanceof Error ? error.message : String(error)}。可手动点“生成 AI 分析包”重试。`)
     }
   }
 
-  async function announceAiPackageResult(saved: 'saved' | 'downloaded') {
+  async function announceAiPackageResult(saved: 'saved' | 'downloaded', withoutSubtitles = false) {
     const copied = await navigator.clipboard.writeText(buildAiChatMessage()).then(() => true, () => false)
     const copyHint = copied
       ? '发给 AI 的指令已复制到剪贴板：先粘贴指令，再上传 ZIP（AI 不会自动读包里的任务说明）。'
       : '上传 ZIP 时请附一句：“解压后严格按包内 prompt.md 分析，只返回 schema.json 结构的 JSON。”'
-    setStatus(`${saved === 'saved' ? 'AI 分析包已保存。' : 'AI 分析包已生成，请在浏览器完成下载。'}${copyHint}完成后把 AI 返回的 JSON 导入回来。`)
+    const subtitleNote = withoutSubtitles ? '本片没有字幕，包里只有画面截图，AI 会纯靠画面分析（精度略降，之后导入字幕可重新生成）。' : ''
+    setStatus(`${saved === 'saved' ? 'AI 分析包已保存。' : 'AI 分析包已生成，请在浏览器完成下载。'}${subtitleNote}${copyHint}完成后把 AI 返回的 JSON 导入回来。`)
   }
 
   async function handleSubtitleImport(e: ChangeEvent<HTMLInputElement>) {

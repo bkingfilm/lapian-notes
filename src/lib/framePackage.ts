@@ -65,8 +65,12 @@ export async function exportAiAnalysisPackage(project: Project): Promise<FileSav
     createTextEntry('prompt.md', buildAiPrompt(project)),
     createTextEntry('schema.json', JSON.stringify(buildAiSchema(), null, 2)),
     createTextEntry('project.json', JSON.stringify(buildAiProjectMeta(project, exportableFrames.length, exportedAt), null, 2)),
-    createTextEntry('subtitles.json', JSON.stringify(project.subtitles, null, 2)),
-    createTextEntry('subtitles.srt', buildSrt(project)),
+    ...(project.subtitles.length
+      ? [
+          createTextEntry('subtitles.json', JSON.stringify(project.subtitles, null, 2)),
+          createTextEntry('subtitles.srt', buildSrt(project)),
+        ]
+      : []),
     ...(project.screenplayResearch?.trim()
       ? [
           createTextEntry('剧情资料.md', project.screenplayResearch),
@@ -215,10 +219,10 @@ function buildAiReadme(project: Project): string {
     '',
     '这个压缩包用于交给 AI 分析电影结构。',
     '',
-    '## ??',
+    '## 包内文件',
     '- frames/：按时间顺序抽出的电影截图，文件名包含时间码。',
-    '- subtitles.srt：字幕文本。',
-    '- subtitles.json：结构化字幕。',
+    project.subtitles.length ? '- subtitles.srt：字幕文本。' : '',
+    project.subtitles.length ? '- subtitles.json：结构化字幕。' : '',
     '- project.json：影片元数据和帧时间。',
     '- prompt.md：给 AI 的分析任务。',
     '- schema.json：AI 必须返回的 JSON 结构。',
@@ -238,11 +242,13 @@ function buildAiPrompt(project: Project): string {
     '3. 每个段落必须写“故事总结”：概括这一段发生了什么，不要直接复制字幕原文。',
     '4. 每个段落必须写“作用”：评价这一段在整部影片结构、人物关系、信息释放和节奏中的作用。',
     '5. 结构树应区分主线、支线、情感线、信息线、节奏/过渡线；允许同一段属于多条线。',
-    '6. 每段请参考 frames/ 中起点、中点、终点附近的画面，并结合 subtitles.srt 判断剧情。',
+    project.subtitles.length
+      ? '6. 每段请参考 frames/ 中起点、中点、终点附近的画面，并结合 subtitles.srt 判断剧情。'
+      : '6. 本包没有字幕：对白无法获得，请完全依靠 frames/ 画面截图判断剧情，无法确认的对白内容不要编造。',
     '7. 事实纪律：人物名、地名、身份、故事发生地等设定必须以字幕和画面证据为准，没有证据就不要写；宁可留空，不要脑补。',
     '8. keyBeats 里每个节拍前面标注时间码（如“52:30 小鱼提出同住”），方便人工回看核对。',
     '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
-    project.screenplayResearch?.trim() ? '7. 剧情资料.md / research.md 中包含用户提供的剧本、评论或剧情资料，请用它校正段落划分和故事理解。' : '',
+    project.screenplayResearch?.trim() ? '10. 剧情资料.md / research.md 中包含用户提供的剧本、评论或剧情资料，请用它校正段落划分和故事理解。' : '',
     '',
     '请严格返回 JSON，不要输出 JSON 之外的说明。JSON 顶层必须包含 movieIdentity 和 segments，可选包含 macroAnalysis、storyLines。',
     'movieIdentity 必须原样带回影片名、项目名和源视频文件名，用于工具导入时校验是否选错电影。',
