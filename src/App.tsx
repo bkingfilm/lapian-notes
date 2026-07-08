@@ -638,15 +638,20 @@ export default function App() {
   // 抽帧完成后的自动链路:没字幕先搜网络字幕,有字幕直接出 AI 分析包
   async function autoPrepareAnalysisPackage(extracted: Project, signal: AbortSignal) {
     let working = extracted
+    let subtitleMissNote = ''
     if (!working.subtitles.length) {
       try {
         setStatus('没有内嵌字幕，正在自动搜索网络字幕...')
-        const result = await fetchAutoSubtitle(
+        const { result, miss } = await fetchAutoSubtitle(
           working.filmTitle || working.sourceVideoName || '',
           working.duration,
           signal,
         )
         if (signal.aborted) return
+        if (!result && miss) {
+          subtitleMissNote = `搜到的字幕「${miss.rejectedFilename}」时间轴和影片对不上（字幕全长 ${secondsToTimecode(miss.rejectedLastTimestamp)}，影片 ${secondsToTimecode(working.duration)}），已拒绝采用，建议手动找对应版本导入。`
+          setStatus(`${subtitleMissNote}正在按无字幕打包...`)
+        }
         if (result) {
           working = {
             ...working,
@@ -664,18 +669,18 @@ export default function App() {
     }
     try {
       const saved = await exportAiAnalysisPackage(working)
-      await announceAiPackageResult(saved, working.subtitles.length === 0)
+      await announceAiPackageResult(saved, working.subtitles.length === 0, subtitleMissNote)
     } catch (error) {
       setStatus(`自动生成 AI 分析包失败：${error instanceof Error ? error.message : String(error)}。可手动点“生成 AI 分析包”重试。`)
     }
   }
 
-  async function announceAiPackageResult(saved: 'saved' | 'downloaded', withoutSubtitles = false) {
+  async function announceAiPackageResult(saved: 'saved' | 'downloaded', withoutSubtitles = false, extraNote = '') {
     const copied = await navigator.clipboard.writeText(buildAiChatMessage()).then(() => true, () => false)
     const copyHint = copied
       ? '发给 AI 的指令已复制到剪贴板：先粘贴指令，再上传 ZIP（AI 不会自动读包里的任务说明）。'
       : '上传 ZIP 时请附一句：“解压后严格按包内 prompt.md 分析，只返回 schema.json 结构的 JSON。”'
-    const subtitleNote = withoutSubtitles ? '本片没有字幕，包里只有画面截图，AI 会纯靠画面分析（精度略降，之后导入字幕可重新生成）。' : ''
+    const subtitleNote = withoutSubtitles ? `${extraNote}本片没有字幕，包里只有画面截图，AI 会纯靠画面分析（精度略降，之后导入字幕可重新生成）。` : ''
     setStatus(`${saved === 'saved' ? 'AI 分析包已保存。' : 'AI 分析包已生成，请在浏览器完成下载。'}${subtitleNote}${copyHint}完成后把 AI 返回的 JSON 导入回来。`)
   }
 

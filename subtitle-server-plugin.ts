@@ -23,6 +23,12 @@ export interface FoundSubtitle {
   lastTimestampSeconds: number
 }
 
+export interface SubtitleSearchResult {
+  found: FoundSubtitle | null
+  // 找到过字幕但全部和片长对不上时,记录最接近那条的信息,供前端提示
+  rejectedMismatch?: { filename: string; lastTimestampSeconds: number }
+}
+
 export function subtitleFinderPlugin(): Plugin {
   return {
     name: 'lapian-subtitle-finder',
@@ -39,7 +45,7 @@ export function subtitleFinderPlugin(): Plugin {
         findSubtitle(name, duration)
           .then((result) => {
             res.setHeader('Content-Type', 'application/json; charset=utf-8')
-            res.end(JSON.stringify(result))
+            res.end(JSON.stringify({ ...(result.found ?? {}), rejectedMismatch: result.rejectedMismatch }))
           })
           .catch((error) => {
             res.statusCode = 500
@@ -51,26 +57,37 @@ export function subtitleFinderPlugin(): Plugin {
   }
 }
 
-async function findSubtitle(rawName: string, durationSeconds: number): Promise<FoundSubtitle | null> {
+async function findSubtitle(rawName: string, durationSeconds: number): Promise<SubtitleSearchResult> {
   const keyword = extractSearchKeyword(rawName)
-  if (!keyword) return null
+  if (!keyword) return { found: null }
   const candidates = await searchCandidates(keyword, rawName)
-  let fallback: FoundSubtitle | null = null
+  let closestRejected: FoundSubtitle | null = null
   for (const candidate of candidates.slice(0, MAX_CANDIDATES)) {
     try {
       const found = await downloadCandidate(candidate)
       if (!found) continue
-      // 时间轴与片长核对:尾条时间和片长差 6 分钟以内视为同版本
+      // 时间轴与片长核对:尾条时间和片长差 6 分钟以内视为同版本。
+      // 对不上的一律不用:错误字幕会让 AI 把别的版本的对白当真,比没字幕更糟。
       if (durationSeconds > 0 && Math.abs(found.lastTimestampSeconds - durationSeconds) > 360) {
-        fallback = fallback ?? found
+        if (
+          !closestRejected ||
+          Math.abs(found.lastTimestampSeconds - durationSeconds) < Math.abs(closestRejected.lastTimestampSeconds - durationSeconds)
+        ) {
+          closestRejected = found
+        }
         continue
       }
-      return found
+      return { found }
     } catch {
       continue
     }
   }
-  return fallback
+  return {
+    found: null,
+    rejectedMismatch: closestRejected
+      ? { filename: closestRejected.filename, lastTimestampSeconds: closestRejected.lastTimestampSeconds }
+      : undefined,
+  }
 }
 
 function extractSearchKeyword(rawName: string): string {
