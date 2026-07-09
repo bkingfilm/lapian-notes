@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Project } from '../types'
 
 type StepState = 'done' | 'current' | 'todo'
@@ -14,7 +15,7 @@ interface WorkflowGuideProps {
 interface Step {
   index: number
   title: string
-  description: string
+  description: ReactNode
   state: StepState
   action?: { label: string; onClick: () => void; disabled?: boolean }
 }
@@ -38,7 +39,11 @@ export function WorkflowGuide(props: WorkflowGuideProps) {
     {
       index: 2,
       title: '把分析包发给 AI',
-      description: '把下载的 ZIP 传给 ChatGPT 等任意 AI：先粘贴指令（已自动复制到剪贴板），再上传 ZIP。',
+      description: (
+        <>
+          把下载的 ZIP 传给 ChatGPT 等任意 AI：<em className="guide-highlight">先粘贴指令</em>（已自动复制到剪贴板），再上传 ZIP。
+        </>
+      ),
       state: hasSegments ? 'done' : hasFrames ? 'current' : 'todo',
       action:
         hasFrames && !hasSegments

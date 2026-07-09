@@ -328,6 +328,12 @@ textarea {
   opacity: 0.75;
 }
 
+.guide-highlight {
+  color: #dc2626;
+  font-style: normal;
+  font-weight: 700;
+}
+
 .workflow-guide {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
