@@ -1,6 +1,6 @@
 # 拉片笔记（Lapian Notes）
 
-[![Discord](https://img.shields.io/badge/Discord-BKinGfilm_%E7%A4%BE%E5%8C%BA-5865F2?logo=discord&logoColor=white)](https://discord.gg/uT6xryBX9w)
+[![Discord](https://img.shields.io/discord/958164961270591508?logo=discord&logoColor=white&label=Discord%20%E7%A4%BE%E5%8C%BA&color=5865F2)](https://discord.gg/uT6xryBX9w)
 [![X](https://img.shields.io/badge/X-%40bkingfilm-000000?logo=x&logoColor=white)](https://x.com/bkingfilm)
 [![下载](https://img.shields.io/github/v/release/bkingfilm/lapian-notes?label=%E4%B8%8B%E8%BD%BD%E6%9C%80%E6%96%B0%E7%89%88&color=2d6cdf)](https://github.com/bkingfilm/lapian-notes/releases/latest)
 [![License](https://img.shields.io/github/license/bkingfilm/lapian-notes?color=green)](LICENSE)
