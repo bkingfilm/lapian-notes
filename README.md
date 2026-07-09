@@ -1,5 +1,10 @@
 # 拉片笔记（Lapian Notes）
 
+[![Discord](https://img.shields.io/badge/Discord-BKinGfilm_%E7%A4%BE%E5%8C%BA-5865F2?logo=discord&logoColor=white)](https://discord.gg/uT6xryBX9w)
+[![X](https://img.shields.io/badge/X-%40bkingfilm-000000?logo=x&logoColor=white)](https://x.com/bkingfilm)
+[![下载](https://img.shields.io/github/v/release/bkingfilm/lapian-notes?label=%E4%B8%8B%E8%BD%BD%E6%9C%80%E6%96%B0%E7%89%88&color=2d6cdf)](https://github.com/bkingfilm/lapian-notes/releases/latest)
+[![License](https://img.shields.io/github/license/bkingfilm/lapian-notes?color=green)](LICENSE)
+
 把一部电影变成一份可编辑的拉片笔记：本地抽帧、自动配字幕、一键生成 AI 分析包，把 AI 返回的结果导回来，得到剧情泳道时间轴、结构树和观众情绪曲线。
 
 为想系统学习电影叙事的创作者设计。全程本地运行，影片和笔记数据不上传任何服务器。
@@ -62,6 +67,12 @@ npm run dev
 
 - 本工具仅供个人学习和研究电影叙事使用，请使用你拥有合法访问权的影片
 - 网络字幕搜索功能从公开字幕站获取字幕，字幕版权归原作者所有，请勿用于任何商业用途
+
+## 交流与反馈
+
+- **想交流拉片、聊电影和游戏影像**：来 Discord 社区 [BKinGfilm](https://discord.gg/uT6xryBX9w)（2500+ 成员）
+- **发现 bug 或想提功能建议**：[提一个 Issue](https://github.com/bkingfilm/lapian-notes/issues)
+- **关注工具更新和作者动态**：X [@bkingfilm](https://x.com/bkingfilm)
 
 ## License
 
