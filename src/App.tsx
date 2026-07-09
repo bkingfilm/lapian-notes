@@ -927,14 +927,14 @@ export default function App() {
     )
   }
 
-  function handleAiImportApply(mode: AiWriteMode) {
+  function handleAiImportApply(mode: AiWriteMode, skipMovieCheck = false) {
     if (!aiImportText.trim()) {
       setStatus('请先选择或粘贴 AI 返回的 JSON。')
       return
     }
 
     try {
-      const imported = importAiAnalysis(project, aiImportText)
+      const imported = importAiAnalysis(project, aiImportText, { skipMovieCheck })
       if (imported.segmentDeepDive) {
         applySegmentDeepDive(imported.segmentDeepDive)
         return
@@ -964,6 +964,14 @@ export default function App() {
       setIsAiImportOpen(false)
       setStatus(aiImportApplyStatus(mode, Boolean(imported.macroAnalysis), imported.segments.length))
     } catch (error) {
+      // 片名对不上时给放行选项:跨电脑分享的 JSON 常和对方的视频文件名不一致
+      if (error instanceof Error && error.name === 'MovieMismatchError') {
+        const proceed = window.confirm(
+          `${error.message}\n\n如果确定是同一部电影（比如朋友分享的分析文件、只是视频文件名不同），点「确定」继续导入；不确定就点「取消」检查一下。`,
+        )
+        if (proceed) handleAiImportApply(mode, true)
+        return
+      }
       setStatus(`解析 AI 内容失败：${error instanceof Error ? error.message : String(error)}`)
     }
   }

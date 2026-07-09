@@ -85,9 +85,9 @@ export function previewAiAnalysisImport(project: Project, text: string): AiImpor
   }
 }
 
-export function importAiAnalysis(project: Project, text: string): { macroAnalysis?: MacroAnalysis; segments: Segment[]; audienceCurvePoints?: AudienceCurvePoint[]; storyLines?: StoryLine[]; segmentDeepDive?: SegmentDeepDiveImport } {
+export function importAiAnalysis(project: Project, text: string, options?: { skipMovieCheck?: boolean }): { macroAnalysis?: MacroAnalysis; segments: Segment[]; audienceCurvePoints?: AudienceCurvePoint[]; storyLines?: StoryLine[]; segmentDeepDive?: SegmentDeepDiveImport } {
   const parsed = unwrapImportedPayload(parsePastedJson(text))
-  validateImportedMovieMatch(project, parsed)
+  if (!options?.skipMovieCheck) validateImportedMovieMatch(project, parsed)
   if (Array.isArray(parsed)) {
     if (!project.frames.length) throw new Error('导入分段需要先生成时间轴。')
     return {
@@ -220,7 +220,9 @@ function validateImportedMovieMatch(project: Project, parsed: unknown) {
   )
 
   if (!matched) {
-    throw new Error(`AI 结果似乎属于“${importedNames[0]}”，和当前项目“${currentNames[0]}”不一致。请确认是否选错 JSON 文件。`)
+    const error = new Error(`AI 结果似乎属于“${importedNames[0]}”，和当前项目“${currentNames[0]}”不一致。`)
+    error.name = 'MovieMismatchError'
+    throw error
   }
 }
 
