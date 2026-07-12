@@ -14,6 +14,7 @@ interface ToolbarProps {
   onExportMarkdown: () => void
   onExportScreenplay: () => void
   onExportShareImage: () => void
+  onOpenGuide: () => void
 }
 
 export function Toolbar(props: ToolbarProps) {
@@ -25,6 +26,7 @@ export function Toolbar(props: ToolbarProps) {
       <div className="brand">
         <strong>拉片笔记</strong>
         <span>{props.project.projectTitle || '未命名项目'}</span>
+        <button type="button" className="guide-button" onClick={props.onOpenGuide}>? 新手怎么拉片</button>
       </div>
       <div className="tool-groups">
         <div className="tool-section">
@@ -49,7 +51,7 @@ export function Toolbar(props: ToolbarProps) {
 
         <div className="tool-section">
           <span>② 发给 AI</span>
-          <button disabled={!canGenerateAiPackage} title="必选:打包截图和字幕,发给 ChatGPT 等任意 AI" onClick={props.onGenerateAiPackage}>
+          <button disabled={!canGenerateAiPackage} title="必选:打包截图和字幕,发给 ChatGPT / Gemini / Claude / Kimi 等能读压缩包和图片的 AI" onClick={props.onGenerateAiPackage}>
             <em className="required-star">*</em>
             生成 AI 分析包
           </button>

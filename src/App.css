@@ -374,6 +374,67 @@ textarea {
   font-weight: 700;
 }
 
+.guide-button {
+  margin-top: 4px;
+  padding: 2px 10px;
+  border: 1px solid #c7d4e8;
+  border-radius: 999px;
+  background: #f6f9ff;
+  color: #2d6cdf;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.beginner-guide-panel {
+  max-width: 640px;
+}
+
+.beginner-guide-body {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #2a3c55;
+}
+
+.beginner-guide-body h4 {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.beginner-guide-body ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.glossary-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.glossary-list dt {
+  font-weight: 700;
+  color: #17202a;
+}
+
+.glossary-list dd {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.term-hint {
+  display: block;
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .share-export-panel {
   max-width: 560px;
 }

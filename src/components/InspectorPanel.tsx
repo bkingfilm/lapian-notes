@@ -6,6 +6,7 @@ import { hasMeaningfulProjectContent, segmentColors } from '../lib/project'
 import { secondsToTimecode } from '../lib/timecode'
 import { getSegmentProgress } from '../lib/segmentProgress'
 import { getSegmentQuality } from '../lib/segmentQuality'
+import { segmentTypeHints, narrativeOrderHints } from '../lib/glossary'
 import { getProjectStoryLines, normalizeLineId } from '../lib/storyLines'
 import { matchScreenplayScenes, parseScreenplaySceneClues } from '../lib/screenplayResearch'
 
@@ -312,7 +313,7 @@ function SegmentInspector({
         </div>
         <progress value={progress.completed} max={progress.total} />
         {progress.missing.length ? (
-          <p>还缺字段：{progress.missing.slice(0, 4).join('、')}{progress.missing.length > 4 ? '…' : ''}</p>
+          <p>想补充可以从这些开始：{progress.missing.slice(0, 4).join('、')}{progress.missing.length > 4 ? '…' : ''}（不必全填，写你有感觉的）</p>
         ) : (
           <p>当前段落字段完整，可直接用于导出。</p>
         )}
@@ -426,14 +427,16 @@ function SegmentInspector({
             onChange({ type, color: segmentColors[type] })
           }}
         >
-          {segmentTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+          {segmentTypes.map((type) => <option key={type} value={type} title={segmentTypeHints[type]}>{type}</option>)}
         </select>
+        <small className="term-hint">{segmentTypeHints[segment.type] ?? ''}</small>
       </label>
       <label className="field compact">
         <span>叙事顺序</span>
         <select value={segment.narrativeOrder ?? '顺叙'} onChange={(event) => onChange({ narrativeOrder: event.target.value as Segment['narrativeOrder'] })}>
-          {narrativeOrders.map((order) => <option key={order} value={order}>{order}</option>)}
+          {narrativeOrders.map((order) => <option key={order} value={order} title={narrativeOrderHints[order]}>{order}</option>)}
         </select>
+        <small className="term-hint">{segment.narrativeOrder ? narrativeOrderHints[segment.narrativeOrder] ?? '' : ''}</small>
       </label>
       <section className="shared-module-editor">
         <label className="checkbox-field">
@@ -500,7 +503,7 @@ function SegmentInspector({
           </button>
         </div>
         <p className="deep-dive-hint">
-          想把这一段拆到镜头级：点上方按钮生成只含本段的小包发给 AI（指令自动进剪贴板），AI
+          不必每段都拆，挑全片你最有感觉的 2 到 3 段。想把这一段拆到镜头级：点上方按钮生成只含本段的小包发给 AI（指令自动进剪贴板），AI
           返回的 JSON 从「导入 AI 结果」导回，会自动填进这一段，不影响其它段落。
         </p>
         <TextArea

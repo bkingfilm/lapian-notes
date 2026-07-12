@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { Toolbar } from './components/Toolbar'
 import { FrameTimeline } from './components/FrameTimeline'
 import { InspectorPanel } from './components/InspectorPanel'
+import { BeginnerGuide } from './components/BeginnerGuide'
 import { ProjectLibrary } from './components/ProjectLibrary'
 import { WorkflowGuide } from './components/WorkflowGuide'
 import type {
@@ -952,6 +953,7 @@ export default function App() {
   }
 
   const [isShareExportOpen, setIsShareExportOpen] = useState(false)
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
 
   function handleExportShareImage() {
     if (!project.segments.length) {
@@ -1280,6 +1282,7 @@ export default function App() {
         onExportMarkdown={handleExportMarkdown}
         onExportScreenplay={handleExportScreenplayText}
         onExportShareImage={handleExportShareImage}
+        onOpenGuide={() => setIsGuideOpen(true)}
       />
 
       <section className="workspace">
@@ -1387,6 +1390,8 @@ export default function App() {
           {lastSavedAt ? `已自动保存 ${new Date(lastSavedAt).toLocaleTimeString('zh-CN', { hour12: false })}` : '尚未自动保存'}
         </span>
       </footer>
+
+      {isGuideOpen ? <BeginnerGuide onClose={() => setIsGuideOpen(false)} /> : null}
 
       {isShareExportOpen ? (
         <section className="markdown-preview">
