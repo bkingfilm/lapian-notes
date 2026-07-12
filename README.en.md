@@ -21,9 +21,9 @@ Everything runs locally. Your film and notes never leave your machine. Bring you
 - **Structure tree and audience-emotion curve**: narrative grouping plus a beat-by-beat engagement curve
 - **Deep-dive per segment**: export any single segment as a small package for scene- and shot-level breakdown
 - **Built-in player sync**: click any timestamp in your notes to jump the video there; "play this segment" auto-pauses at the segment end
+- **Full manual editing**: every AI field is an editable draft; export the whole notebook as Markdown or a shareable long image
 
 <img src="docs/player-panel.png" alt="Player sync panel" width="380">
-- **Full manual editing**: every AI field is an editable draft; export the whole notebook as Markdown or a shareable long image
 
 ## Quick start
 
