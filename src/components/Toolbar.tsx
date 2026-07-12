@@ -13,6 +13,7 @@ interface ToolbarProps {
   onImportAiResult: () => void
   onExportMarkdown: () => void
   onExportScreenplay: () => void
+  onExportShareImage: () => void
 }
 
 export function Toolbar(props: ToolbarProps) {
@@ -66,6 +67,7 @@ export function Toolbar(props: ToolbarProps) {
           <span>导出</span>
           <button disabled={!hasExportableContent} onClick={props.onExportMarkdown}>导出 Markdown</button>
           <button disabled={!props.project.segments.length} onClick={props.onExportScreenplay}>导出剧本正文</button>
+          <button disabled={!props.project.segments.length} title="把泳道时间轴、情绪曲线和结构树整体导出为一张长图,适合分享" onClick={props.onExportShareImage}>导出分享长图</button>
         </div>
 
         <div className="tool-section tool-section-secondary">

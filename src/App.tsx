@@ -25,6 +25,7 @@ import { deleteLibraryProject, listLibraryProjects, loadLibraryProject, saveProj
 import { getProjectStoryLines } from './lib/storyLines'
 import { secondsToTimecode } from './lib/timecode'
 import { exportMarkdown, exportScreenplayText } from './lib/markdown'
+import { toPng } from 'html-to-image'
 
 import type { ExtractProgress } from './lib/videoFrames'
 
@@ -935,6 +936,25 @@ export default function App() {
     setStatus('段落已删除。')
   }
 
+  async function handleExportShareImage() {
+    const target = document.querySelector<HTMLElement>('.story-map')
+    if (!target || !project.segments.length) {
+      setStatus('请先导入 AI 结果生成时间轴,再导出分享长图。')
+      return
+    }
+    try {
+      setStatus('正在生成分享长图,内容多时需要几秒...')
+      const dataUrl = await toPng(target, { backgroundColor: '#ffffff', pixelRatio: 2 })
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = `${project.projectTitle || DEFAULT_PROJECT_TITLE}-拉片长图.png`
+      link.click()
+      setStatus('分享长图已生成,请在浏览器完成下载。')
+    } catch (error) {
+      setStatus(`生成分享长图失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
   function handleExportMarkdown() {
     const hasExportableContent = hasMeaningfulProjectContent(project)
     if (!hasExportableContent) {
@@ -1219,6 +1239,7 @@ export default function App() {
         onImportAiResult={() => aiResultInputRef.current?.click()}
         onExportMarkdown={handleExportMarkdown}
         onExportScreenplay={handleExportScreenplayText}
+        onExportShareImage={handleExportShareImage}
       />
 
       <section className="workspace">
