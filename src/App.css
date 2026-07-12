@@ -374,6 +374,32 @@ textarea {
   font-weight: 700;
 }
 
+.welcome-back-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7e3f7;
+  background: #eef5ff;
+  color: #2a3c55;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.welcome-back-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.welcome-back-actions button:first-child {
+  border-color: #2d6cdf;
+  color: #2d6cdf;
+  font-weight: 700;
+}
+
 .workflow-guide {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

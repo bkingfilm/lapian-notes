@@ -63,6 +63,8 @@ export default function App() {
   const [aiImportText, setAiImportText] = useState('')
   const [isAiImportOpen, setIsAiImportOpen] = useState(false)
   const [libraryProjects, setLibraryProjects] = useState<ProjectSummary[] | null>(null)
+  // 打开页面时若恢复了上次项目,显示一次性欢迎条,告知来源并给出口
+  const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(() => Boolean(INITIAL_PROJECT))
   const [frameRangeStartId, setFrameRangeStartId] = useState<string | null>(null)
   const [frameRangeEndId, setFrameRangeEndId] = useState<string | null>(null)
 
@@ -1244,6 +1246,35 @@ export default function App() {
 
       <section className="workspace">
         <section className="main-pane">
+          {showWelcomeBack ? (
+            <div className="welcome-back-banner">
+              <span>
+                已恢复你上次的项目「{project.projectTitle || project.filmTitle || '未命名项目'}」
+                {project.segments.length ? `（${project.segments.length} 个段落）` : ''}，可以直接继续。
+              </span>
+              <div className="welcome-back-actions">
+                <button type="button" onClick={() => setShowWelcomeBack(false)}>继续这个项目</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowWelcomeBack(false)
+                    videoInputRef.current?.click()
+                  }}
+                >
+                  拆一部新电影
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowWelcomeBack(false)
+                    void handleOpenLibrary()
+                  }}
+                >
+                  看我的项目
+                </button>
+              </div>
+            </div>
+          ) : null}
           <WorkflowGuide
             project={project}
             isTaskRunning={isTaskRunning}
