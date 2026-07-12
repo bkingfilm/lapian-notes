@@ -951,22 +951,47 @@ export default function App() {
     setStatus('段落已删除。')
   }
 
-  async function handleExportShareImage() {
-    const target = document.querySelector<HTMLElement>('.story-map')
-    if (!target || !project.segments.length) {
-      setStatus('请先导入 AI 结果生成时间轴,再导出分享长图。')
+  const [isShareExportOpen, setIsShareExportOpen] = useState(false)
+
+  function handleExportShareImage() {
+    if (!project.segments.length) {
+      setStatus('请先导入 AI 结果生成时间轴,再导出分享图。')
+      return
+    }
+    setIsShareExportOpen(true)
+  }
+
+  async function runShareExport(mode: 'structure' | 'full') {
+    setIsShareExportOpen(false)
+    const target = document.querySelector<HTMLElement>(mode === 'structure' ? '.swimlane-module' : '.story-map')
+    if (!target) {
+      setStatus('没有找到可导出的时间轴区域。')
       return
     }
     try {
-      setStatus('正在生成分享长图,内容多时需要几秒...')
-      const dataUrl = await toPng(target, { backgroundColor: '#ffffff', pixelRatio: 2 })
+      setStatus('正在生成分享图,内容多时需要几秒...')
+      // 展开横向滚动区,防止长片泳道被裁切
+      target.classList.add('share-exporting')
+      const dataUrl = await Promise.race([
+        toPng(target, {
+          backgroundColor: '#ffffff',
+          pixelRatio: 2,
+          width: target.scrollWidth,
+          height: target.scrollHeight,
+        }),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(() => reject(new Error('生成超时(60秒)。内容可能过大,试试「结构图」模式,或减少段落后重试')), 60000),
+        ),
+      ])
       const link = document.createElement('a')
       link.href = dataUrl
-      link.download = `${project.projectTitle || DEFAULT_PROJECT_TITLE}-拉片长图.png`
+      link.download = `${project.projectTitle || DEFAULT_PROJECT_TITLE}-${mode === 'structure' ? '结构图' : '完整拉片长图'}.png`
       link.click()
-      setStatus('分享长图已生成,请在浏览器完成下载。')
+      setStatus(mode === 'structure' ? '结构图已生成(泳道+情绪曲线),适合直接发社交平台。' : '完整拉片长图已生成,适合存档或给人细读。')
     } catch (error) {
-      setStatus(`生成分享长图失败：${error instanceof Error ? error.message : String(error)}`)
+      setStatus(`生成分享图失败：${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      target.classList.remove('share-exporting')
     }
   }
 
@@ -1362,6 +1387,29 @@ export default function App() {
           {lastSavedAt ? `已自动保存 ${new Date(lastSavedAt).toLocaleTimeString('zh-CN', { hour12: false })}` : '尚未自动保存'}
         </span>
       </footer>
+
+      {isShareExportOpen ? (
+        <section className="markdown-preview">
+          <div className="markdown-preview-panel share-export-panel">
+            <div className="markdown-preview-header">
+              <strong>导出分享图</strong>
+              <div>
+                <button onClick={() => setIsShareExportOpen(false)}>关闭</button>
+              </div>
+            </div>
+            <div className="share-export-options">
+              <button type="button" onClick={() => void runShareExport('structure')}>
+                <strong>结构图(推荐)</strong>
+                <span>泳道时间轴 + 情绪曲线,横幅一张,发 X/朋友圈一眼看懂全片结构</span>
+              </button>
+              <button type="button" onClick={() => void runShareExport('full')}>
+                <strong>完整笔记长图</strong>
+                <span>包含结构树全部段落的截图和文字,很长,适合存档或给人细读</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {libraryProjects !== null ? (
         <ProjectLibrary

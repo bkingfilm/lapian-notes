@@ -374,6 +374,52 @@ textarea {
   font-weight: 700;
 }
 
+.share-export-panel {
+  max-width: 560px;
+}
+
+.share-export-options {
+  display: grid;
+  gap: 10px;
+}
+
+.share-export-options button {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  text-align: left;
+  padding: 14px;
+  border: 1px solid #d9dde3;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.share-export-options button:hover {
+  border-color: #2d6cdf;
+  background: #f6f9ff;
+}
+
+.share-export-options strong {
+  font-size: 14px;
+  color: #17202a;
+}
+
+.share-export-options span {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* 导出瞬间展开横向滚动,保证长片泳道完整入图 */
+.share-exporting .swimlane-scroll {
+  overflow: visible !important;
+}
+
+.share-exporting {
+  overflow: visible !important;
+}
+
 .welcome-back-banner {
   display: flex;
   justify-content: space-between;
