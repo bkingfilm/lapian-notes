@@ -30,7 +30,8 @@ interface InspectorPanelProps {
   onProjectDelete: () => void
   videoPlayerUrl: string | null
   playerRef: RefObject<HTMLVideoElement | null>
-  onSeekTo: (time: number) => void
+  onSeekTo: (time: number, stopAt?: number) => void
+  onPlayerTimeUpdate: () => void
   onRelinkVideo: () => void
 }
 
@@ -44,6 +45,7 @@ export function InspectorPanel(props: InspectorPanelProps) {
       <VideoPlayerPanel
         videoPlayerUrl={props.videoPlayerUrl}
         playerRef={props.playerRef}
+        onTimeUpdate={props.onPlayerTimeUpdate}
         onRelinkVideo={props.onRelinkVideo}
       />
 
@@ -86,16 +88,18 @@ export function InspectorPanel(props: InspectorPanelProps) {
 function VideoPlayerPanel({
   videoPlayerUrl,
   playerRef,
+  onTimeUpdate,
   onRelinkVideo,
 }: {
   videoPlayerUrl: string | null
   playerRef: RefObject<HTMLVideoElement | null>
+  onTimeUpdate: () => void
   onRelinkVideo: () => void
 }) {
   return (
     <section className="video-player-panel">
       {videoPlayerUrl ? (
-        <video ref={playerRef} src={videoPlayerUrl} controls preload="metadata" />
+        <video ref={playerRef} src={videoPlayerUrl} controls preload="metadata" onTimeUpdate={onTimeUpdate} />
       ) : (
         <div className="video-player-empty">
           <span>关联影片文件后，点任意时间即可跳转播放</span>
@@ -228,7 +232,7 @@ function SegmentInspector({
   onUseFrameAsBoundary: (boundary: 'start' | 'end') => void
   onExportDeepDive: () => void
   onDelete: () => void
-  onSeekTo: (time: number) => void
+  onSeekTo: (time: number, stopAt?: number) => void
 }) {
   const segmentSubtitles = subtitles.filter((subtitle) => subtitle.startTime <= segment.endTime && subtitle.endTime >= segment.startTime)
   const progress = getSegmentProgress(segment)
@@ -299,7 +303,7 @@ function SegmentInspector({
       </div>
       <div className="segment-time-title">
         {secondsToTimecode(segment.startTime)} - {secondsToTimecode(segment.endTime)}
-        <button type="button" className="seek-button" onClick={() => onSeekTo(segment.startTime)}>▶ 播放本段</button>
+        <button type="button" className="seek-button" onClick={() => onSeekTo(segment.startTime, segment.endTime)}>▶ 播放本段</button>
       </div>
       <div className="segment-progress">
         <div>

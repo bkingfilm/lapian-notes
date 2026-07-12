@@ -73,6 +73,8 @@ export default function App() {
   // 播放器用的视频地址(objectURL 或转码 URL),null=未关联影片
   const [videoPlayerUrl, setVideoPlayerUrl] = useState<string | null>(null)
   const playerRef = useRef<HTMLVideoElement>(null)
+  // 「播放本段」的自动暂停点:到达后暂停一次并清除,不限制后续手动播放
+  const playStopAtRef = useRef<number | null>(null)
   const relinkInputRef = useRef<HTMLInputElement>(null)
   const projectRef = useRef(project)
   projectRef.current = project
@@ -214,14 +216,25 @@ export default function App() {
     })
   }
 
-  function handleSeekTo(time: number) {
+  function handleSeekTo(time: number, stopAt?: number) {
     const player = playerRef.current
     if (!player || !videoPlayerUrl) {
       setStatus('还没有关联影片文件:在右侧播放器面板点「关联影片文件」选择本片,即可点时间跳转播放。')
       return
     }
+    playStopAtRef.current = stopAt !== undefined && stopAt > time ? stopAt : null
     player.currentTime = Math.max(0, time)
     void player.play().catch(() => undefined)
+  }
+
+  function handlePlayerTimeUpdate() {
+    const stopAt = playStopAtRef.current
+    const player = playerRef.current
+    if (stopAt === null || !player) return
+    if (player.currentTime >= stopAt) {
+      player.pause()
+      playStopAtRef.current = null
+    }
   }
 
   // 项目恢复后重新关联影片:只接上播放和抽帧能力,不改动项目内容
@@ -1338,6 +1351,7 @@ export default function App() {
           videoPlayerUrl={videoPlayerUrl}
           playerRef={playerRef}
           onSeekTo={handleSeekTo}
+          onPlayerTimeUpdate={handlePlayerTimeUpdate}
           onRelinkVideo={() => relinkInputRef.current?.click()}
         />
       </section>

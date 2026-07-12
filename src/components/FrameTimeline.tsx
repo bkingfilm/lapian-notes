@@ -75,7 +75,7 @@ interface FrameTimelineProps {
   onGapSelect: (startTime: number, endTime: number) => void
   onFrameClick: (frame: Frame, shiftKey: boolean) => void
   onSegmentClick: (segmentId: string) => void
-  onSeekTo?: (time: number) => void
+  onSeekTo?: (time: number, stopAt?: number) => void
 }
 
 export function FrameTimeline(props: FrameTimelineProps) {
@@ -362,7 +362,7 @@ function TimelineSwimlane({
   gaps: Array<{ startTime: number; endTime: number }>
   onGapSelect: (startTime: number, endTime: number) => void
   onSegmentClick: (segmentId: string) => void
-  onSeekTo?: (time: number) => void
+  onSeekTo?: (time: number, stopAt?: number) => void
 }) {
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null)
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null)
@@ -537,7 +537,7 @@ function TimelineSwimlane({
                         background: lineColor(card.primaryLane, storyLines).main,
                       }}
                       onClick={() => onSegmentClick(card.id)}
-                      onDoubleClick={() => onSeekTo?.(card.startTime)}
+                      onDoubleClick={() => onSeekTo?.(card.startTime, card.endTimeSeconds)}
                       onMouseOver={() => setHoveredBlockId(card.id)}
                       onMouseLeave={() => setHoveredBlockId(null)}
                       title={[
