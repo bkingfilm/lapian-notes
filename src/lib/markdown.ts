@@ -204,7 +204,7 @@ function renderRevisionChecklist(
     checklist.push('- 未导入剧本/剧情资料：建议补充公开剧本、剧情梗概、访谈或可信影评后再核对剧情还原。')
   }
   if (!project.subtitles.length) {
-    checklist.push('- 未导入字幕：对白、手语/字幕和信息释放判断需要结合画面人工核对。')
+    checklist.push('- 未导入字幕：对白、旁白/字幕和信息释放判断需要结合画面人工核对。')
   }
   if (macroProgress.missing.length) {
     checklist.push(`- 全片结构待补：${macroProgress.missing.join('、')}`)
@@ -453,7 +453,7 @@ function renderScreenplayBlock(block: NonNullable<Segment['screenplayBlocks']>[n
   const time = block.time !== undefined ? ` ${secondsToTimecode(block.time)}` : ''
   const text = block.text.replace(/\s+/g, ' ').trim()
   if (block.type === '场景') return [`**${text}**`, '']
-  if (block.type === '对白' || block.type === '手语/字幕') return [`${block.type}${time}：${text}`, '']
+  if (block.type === '对白' || block.type === '旁白/字幕' || block.type === '手语/字幕') return [`${block.type}${time}：${text}`, '']
   if (block.type === '备注') return [`（${text}）`, '']
   return [`${time ? `${time} ` : ''}${text}`, '']
 }
@@ -462,7 +462,7 @@ function pickSegmentSubtitles(subtitles: Subtitle[], segment: Segment): Subtitle
   return subtitles.filter((subtitle) => subtitle.startTime <= segment.endTime && subtitle.endTime >= segment.startTime)
 }
 
-const screenplayBlockTypes: ScreenplayBlockType[] = ['场景', '动作', '对白', '手语/字幕', '备注']
+const screenplayBlockTypes: ScreenplayBlockType[] = ['场景', '动作', '对白', '旁白/字幕', '手语/字幕', '备注']
 
 interface ScreenplayBlockStats {
   total: number
@@ -515,6 +515,7 @@ function createEmptyBlockStats(): ScreenplayBlockStats {
       场景: 0,
       动作: 0,
       对白: 0,
+      '旁白/字幕': 0,
       '手语/字幕': 0,
       备注: 0,
     },

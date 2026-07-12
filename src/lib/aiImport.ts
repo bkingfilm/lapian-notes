@@ -416,7 +416,8 @@ function normalizeScreenplayBlocks(project: Project, value: unknown): Segment['s
 }
 
 function normalizeScreenplayBlockType(value: unknown): NonNullable<Segment['screenplayBlocks']>[number]['type'] {
-  if (value === '场景' || value === '动作' || value === '对白' || value === '手语/字幕' || value === '备注') return value
+  if (value === '手语/字幕') return '旁白/字幕'
+  if (value === '场景' || value === '动作' || value === '对白' || value === '旁白/字幕' || value === '备注') return value
   return '动作'
 }
 

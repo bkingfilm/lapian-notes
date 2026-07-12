@@ -373,9 +373,7 @@ function TimelineSwimlane({
   const lanePadding = 8
   const stackStep = cardHeight + stackGap
   const cards = segments.map((segment) => normalizeStoryCard(segment, subtitles, storyLines))
-  const visibleAudienceCurvePoints = audienceCurvePoints.length
-    ? audienceCurvePoints
-    : buildFallbackAudienceCurvePoints(segments, timelineDuration)
+  const visibleAudienceCurvePoints = audienceCurvePoints
   const structureBands = buildStructureBands(timelineDuration)
   const hoveredCard = hoveredBlockId ? cards.find((card) => card.id === hoveredBlockId) : undefined
   const highlightedLaneIds = hoveredCard ? [hoveredCard.primaryLane, ...hoveredCard.relatedLaneIds] : []
@@ -870,45 +868,6 @@ function EmotionCurveLane({
   )
 }
 
-function buildFallbackAudienceCurvePoints(segments: Segment[], duration: number): AudienceCurvePoint[] {
-  if (!segments.length) return []
-  const total = Math.max(duration, segments.at(-1)?.endTime ?? 1, 1)
-  const anchors: Array<Omit<AudienceCurvePoint, 'id' | 'relatedBlockIds' | 'source'>> = [
-    { time: total * 0.04, intensity: 30, valence: 20, emotionType: 'curiosity', rhythmRole: 'setup', title: '开场建立期待', description: '观众开始进入故事世界，理解人物处境和基本规则。', importance: 'normal', showLabel: false },
-    { time: total * 0.12, intensity: 45, valence: -20, emotionType: 'anxiety', rhythmRole: 'pressure', title: '初始压力出现', description: '主角处境、外部阻力或潜在危机开始让观众投入。', importance: 'key', showLabel: true },
-    { time: total * 0.2, intensity: 38, valence: 10, emotionType: 'curiosity', rhythmRole: 'cooldown', title: '信息铺开后回落', description: '故事进入说明和过渡，观众强度暂时放缓。', importance: 'normal', showLabel: false },
-    { time: total * 0.28, intensity: 58, valence: 35, emotionType: 'hope', rhythmRole: 'rise', title: '目标变得清晰', description: '主角目标或主要行动方向变明确，观众期待上升。', importance: 'key', showLabel: true },
-    { time: total * 0.36, intensity: 50, valence: 10, emotionType: 'tension', rhythmRole: 'cooldown', title: '阶段性缓冲', description: '剧情在推进中留出关系、信息或行动准备的缓冲。', importance: 'normal', showLabel: false },
-    { time: total * 0.45, intensity: 70, valence: -45, emotionType: 'conflict', rhythmRole: 'pressure', title: '阻力升级', description: '主要冲突或危险加重，观众紧张感明显提高。', importance: 'key', showLabel: true },
-    { time: total * 0.52, intensity: 60, valence: -10, emotionType: 'tension', rhythmRole: 'drop', title: '冲突后短暂平台', description: '高压之后进入处理阶段，观众体验略微回落。', importance: 'normal', showLabel: false },
-    { time: total * 0.62, intensity: 78, valence: -60, emotionType: 'anxiety', rhythmRole: 'pressure', title: '压力集中', description: '人物选择、危机或多线冲突集中，观众投入继续升高。', importance: 'key', showLabel: true },
-    { time: total * 0.7, intensity: 88, valence: -75, emotionType: 'sadness', rhythmRole: 'low', title: '低谷或重大损失', description: '主角处于被动、失败或代价显现的位置，观众体验进入低谷。', importance: 'low', showLabel: true },
-    { time: total * 0.76, intensity: 58, valence: -30, emotionType: 'sadness', rhythmRole: 'cooldown', title: '低谷后的停顿', description: '剧情给观众消化损失、等待反击或解决的空间。', importance: 'normal', showLabel: false },
-    { time: total * 0.84, intensity: 94, valence: 65, emotionType: 'inspiration', rhythmRole: 'peak', title: '高潮爆发', description: '主要冲突进入爆点，观众体验达到全片高峰。', importance: 'peak', showLabel: true },
-    { time: total * 0.9, intensity: 82, valence: 60, emotionType: 'release', rhythmRole: 'release', title: '解决带来释放', description: '关键问题得到回应，观众获得阶段性释放。', importance: 'key', showLabel: true },
-    { time: total * 0.95, intensity: 70, valence: 35, emotionType: 'aftertaste', rhythmRole: 'aftertaste', title: '结尾余韵', description: '高潮之后情绪回落，故事进入收束和余味。', importance: 'key', showLabel: true },
-  ]
-
-  return anchors.map((anchor, index) => {
-    const time = Math.min(Math.round(anchor.time), total)
-    const related = nearestSegmentsAtTime(segments, time)
-    return {
-      ...anchor,
-      id: 'fallback_audience_' + (index + 1),
-      time,
-      relatedBlockIds: related.map((segment) => segment.id),
-      source: 'ai',
-    }
-  })
-}
-
-function nearestSegmentsAtTime(segments: Segment[], time: number): Segment[] {
-  const direct = segments.filter((segment) => time >= segment.startTime && time <= segment.endTime)
-  if (direct.length) return direct.slice(0, 2)
-  return [...segments]
-    .sort((a, b) => Math.abs((a.startTime + a.endTime) / 2 - time) - Math.abs((b.startTime + b.endTime) / 2 - time))
-    .slice(0, 1)
-}
 
 function extractPhaseLabel(phase: ExtractPhase = 'idle'): string {
   if (phase === 'transcode') return '转码中｜正在转换为浏览器支持的格式'
@@ -995,7 +954,7 @@ function formatBlockStats(segment: Segment): string {
   const blocks = segment.screenplayBlocks ?? []
   const sceneCount = blocks.filter((block) => block.type === '场景').length
   const actionCount = blocks.filter((block) => block.type === '动作').length
-  const dialogueCount = blocks.filter((block) => block.type === '对白' || block.type === '手语/字幕').length
+  const dialogueCount = blocks.filter((block) => block.type === '对白' || block.type === '旁白/字幕' || block.type === '手语/字幕').length
   const noteCount = blocks.filter((block) => block.type === '备注').length
   return [
     `${blocks.length} 条小节`,
@@ -1006,12 +965,12 @@ function formatBlockStats(segment: Segment): string {
   ].filter(Boolean).join('｜')
 }
 
-type ScreenplayBlockFilter = '场景' | '动作' | '对白' | '手语/字幕' | '备注'
+type ScreenplayBlockFilter = '场景' | '动作' | '对白' | '旁白/字幕' | '手语/字幕' | '备注'
 
 function blockDensity(segment: Segment): Array<{ type: ScreenplayBlockFilter; percent: number }> {
   const blocks = segment.screenplayBlocks ?? []
   if (!blocks.length) return [{ type: '备注', percent: 100 }]
-  const types: ScreenplayBlockFilter[] = ['场景', '动作', '对白', '手语/字幕', '备注']
+  const types: ScreenplayBlockFilter[] = ['场景', '动作', '对白', '旁白/字幕', '手语/字幕', '备注']
   return types
     .map((type) => ({
       type,

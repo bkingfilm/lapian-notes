@@ -138,7 +138,7 @@ export interface ScreenplayBlock {
   text: string
 }
 
-export type ScreenplayBlockType = '场景' | '动作' | '对白' | '手语/字幕' | '备注'
+export type ScreenplayBlockType = '场景' | '动作' | '对白' | '旁白/字幕' | '手语/字幕' | '备注'
 
 export interface MacroAnalysis {
   overallStructure: string

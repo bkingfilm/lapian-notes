@@ -434,10 +434,6 @@ function SegmentInspector({
           onChange={(structureRole) => onChange({ structureRole })}
         />
       </section>
-      <label className="field compact">
-        <span>置信度</span>
-        <input type="number" min={0} max={1} step={0.05} value={segment.confidence ?? 0} onChange={(event) => onChange({ confidence: Number(event.target.value) })} />
-      </label>
 
       <section className="core-analysis-fields">
         <div className="core-analysis-title">
@@ -556,7 +552,7 @@ function ScreenplayBlockEditor({
             <li key={block.id}>
               <div className="screenplay-block-row">
                 <select value={block.type} onChange={(event) => updateBlock(block.id, { type: event.target.value as ScreenplayBlock['type'] })}>
-                  {(['场景', '动作', '对白', '手语/字幕', '备注'] as const).map((type) => <option key={type} value={type}>{type}</option>)}
+                  {(['场景', '动作', '对白', '旁白/字幕', '备注'] as const).map((type) => <option key={type} value={type}>{type}</option>)}
                 </select>
                 <input
                   type="number"
@@ -572,7 +568,7 @@ function ScreenplayBlockEditor({
               </div>
               <textarea
                 value={block.text}
-                placeholder="写入场景头、动作描写、人物对白或手语/字幕提示。"
+                placeholder="写入场景头、动作描写、人物对白或旁白/字幕提示。"
                 onChange={(event) => updateBlock(block.id, { text: event.target.value })}
               />
             </li>
