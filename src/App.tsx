@@ -67,6 +67,10 @@ export default function App() {
 
   // File=用户直接选择的文件;string=本地转码后的 dev server 视频地址
   const videoFileRef = useRef<File | string | null>(null)
+  // 播放器用的视频地址(objectURL 或转码 URL),null=未关联影片
+  const [videoPlayerUrl, setVideoPlayerUrl] = useState<string | null>(null)
+  const playerRef = useRef<HTMLVideoElement>(null)
+  const relinkInputRef = useRef<HTMLInputElement>(null)
   const projectRef = useRef(project)
   projectRef.current = project
   const taskAbortRef = useRef<AbortController | null>(null)
@@ -194,6 +198,42 @@ export default function App() {
 
   function clearVideoFileReference() {
     videoFileRef.current = null
+    setVideoPlayerUrl((current) => {
+      if (current?.startsWith('blob:')) URL.revokeObjectURL(current)
+      return null
+    })
+  }
+
+  function attachPlayableVideo(source: File | string) {
+    setVideoPlayerUrl((current) => {
+      if (current?.startsWith('blob:')) URL.revokeObjectURL(current)
+      return typeof source === 'string' ? source : URL.createObjectURL(source)
+    })
+  }
+
+  function handleSeekTo(time: number) {
+    const player = playerRef.current
+    if (!player || !videoPlayerUrl) {
+      setStatus('还没有关联影片文件:在右侧播放器面板点「关联影片文件」选择本片,即可点时间跳转播放。')
+      return
+    }
+    player.currentTime = Math.max(0, time)
+    void player.play().catch(() => undefined)
+  }
+
+  // 项目恢复后重新关联影片:只接上播放和抽帧能力,不改动项目内容
+  function handleRelinkVideo(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    videoFileRef.current = file
+    attachPlayableVideo(file)
+    const expected = project.sourceVideoName
+    setStatus(
+      expected && file.name !== expected
+        ? `已关联影片:${file.name}。注意和项目记录的「${expected}」文件名不同,请确认是同一部电影。`
+        : `已关联影片:${file.name},可以播放和重新抽帧了。`,
+    )
+    e.target.value = ''
   }
 
   function revokeFrameObjectUrls(frames: Frame[]) {
@@ -530,6 +570,7 @@ export default function App() {
     setProject(nextProject)
     setStatus(`已选择电影：${file.name}`)
     videoFileRef.current = file
+    attachPlayableVideo(file)
     const controller = new AbortController()
     taskAbortRef.current = controller
     setExtractAbort(controller)
@@ -568,6 +609,7 @@ export default function App() {
         }
         videoSource = transcoded.videoUrl
         videoFileRef.current = transcoded.videoUrl
+        attachPlayableVideo(transcoded.videoUrl)
         if (transcoded.subtitleContent) {
           const embedded = cleanSubtitles(parseSubtitle(transcoded.subtitleContent))
           if (embedded.length) {
@@ -1151,6 +1193,13 @@ export default function App() {
         onChange={handleScreenplayResearchImport}
       />
       <input
+        ref={relinkInputRef}
+        className="hidden-input"
+        type="file"
+        accept="video/*,.mp4,.mov,.mkv,.avi,.webm,.rmvb,.rm,.wmv,.flv,.ts"
+        onChange={handleRelinkVideo}
+      />
+      <input
         ref={aiResultInputRef}
         className="hidden-input"
         type="file"
@@ -1204,6 +1253,7 @@ export default function App() {
             onGapSelect={handleGapSelect}
             onFrameClick={handleFrameClick}
             onSegmentClick={handleSegmentClick}
+            onSeekTo={handleSeekTo}
           />
         </section>
 
@@ -1233,6 +1283,10 @@ export default function App() {
           onSegmentDelete={handleSegmentDelete}
           onExportSegmentDeepDive={handleExportSegmentDeepDive}
           onProjectDelete={handleDeleteProject}
+          videoPlayerUrl={videoPlayerUrl}
+          playerRef={playerRef}
+          onSeekTo={handleSeekTo}
+          onRelinkVideo={() => relinkInputRef.current?.click()}
         />
       </section>
 

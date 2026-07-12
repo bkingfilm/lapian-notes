@@ -1,4 +1,5 @@
-﻿import type { Frame, Project, Segment, StoryLine, Subtitle } from '../types'
+﻿import type { RefObject } from 'react'
+import type { Frame, Project, Segment, StoryLine, Subtitle } from '../types'
 import { narrativeOrders, segmentTypes } from '../types'
 import type { ScreenplayBlock } from '../types'
 import { hasMeaningfulProjectContent, segmentColors } from '../lib/project'
@@ -27,6 +28,10 @@ interface InspectorPanelProps {
   onSegmentDelete: (segmentId: string) => void
   onExportSegmentDeepDive: () => void
   onProjectDelete: () => void
+  videoPlayerUrl: string | null
+  playerRef: RefObject<HTMLVideoElement | null>
+  onSeekTo: (time: number) => void
+  onRelinkVideo: () => void
 }
 
 export function InspectorPanel(props: InspectorPanelProps) {
@@ -35,6 +40,12 @@ export function InspectorPanel(props: InspectorPanelProps) {
       <div className="panel-title">
         <h2>编辑</h2>
       </div>
+
+      <VideoPlayerPanel
+        videoPlayerUrl={props.videoPlayerUrl}
+        playerRef={props.playerRef}
+        onRelinkVideo={props.onRelinkVideo}
+      />
 
       {props.selectedSegment ? (
         <SegmentInspector
@@ -53,6 +64,7 @@ export function InspectorPanel(props: InspectorPanelProps) {
           }}
           onExportDeepDive={props.onExportSegmentDeepDive}
           onDelete={() => props.onSegmentDelete(props.selectedSegment!.id)}
+          onSeekTo={props.onSeekTo}
         />
       ) : props.selectedFrame ? (
         <FrameInspector
@@ -62,11 +74,35 @@ export function InspectorPanel(props: InspectorPanelProps) {
           onEndSegmentRange={() => props.onEndSegmentRange(props.selectedFrame!.id)}
           onClearSegmentRange={props.onClearSegmentRange}
           onChange={(patch) => props.onFrameChange(props.selectedFrame!.id, patch)}
+          onSeekTo={props.onSeekTo}
         />
       ) : (
         <ProjectManager project={props.project} onChange={props.onProjectChange} onDelete={props.onProjectDelete} />
       )}
     </aside>
+  )
+}
+
+function VideoPlayerPanel({
+  videoPlayerUrl,
+  playerRef,
+  onRelinkVideo,
+}: {
+  videoPlayerUrl: string | null
+  playerRef: RefObject<HTMLVideoElement | null>
+  onRelinkVideo: () => void
+}) {
+  return (
+    <section className="video-player-panel">
+      {videoPlayerUrl ? (
+        <video ref={playerRef} src={videoPlayerUrl} controls preload="metadata" />
+      ) : (
+        <div className="video-player-empty">
+          <span>关联影片文件后，点任意时间即可跳转播放</span>
+          <button type="button" onClick={onRelinkVideo}>关联影片文件</button>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -123,6 +159,7 @@ function FrameInspector({
   onEndSegmentRange,
   onClearSegmentRange,
   onChange,
+  onSeekTo,
 }: {
   frame: Frame
   hasFrameRangeStart: boolean
@@ -130,10 +167,14 @@ function FrameInspector({
   onEndSegmentRange: () => void
   onClearSegmentRange: () => void
   onChange: (patch: Partial<Frame>) => void
+  onSeekTo: (time: number) => void
 }) {
   return (
     <section className="inspector-section">
-      <h3>时间点 {secondsToTimecode(frame.time)}</h3>
+      <h3>
+        时间点 {secondsToTimecode(frame.time)}
+        <button type="button" className="seek-button" onClick={() => onSeekTo(frame.time)}>▶ 从此处播放</button>
+      </h3>
       {frame.src ? (
         <img className="preview-image" src={frame.src} alt="frame" />
       ) : (
@@ -173,6 +214,7 @@ function SegmentInspector({
   onUseFrameAsBoundary,
   onExportDeepDive,
   onDelete,
+  onSeekTo,
 }: {
   frames: Frame[]
   subtitles: Subtitle[]
@@ -186,6 +228,7 @@ function SegmentInspector({
   onUseFrameAsBoundary: (boundary: 'start' | 'end') => void
   onExportDeepDive: () => void
   onDelete: () => void
+  onSeekTo: (time: number) => void
 }) {
   const segmentSubtitles = subtitles.filter((subtitle) => subtitle.startTime <= segment.endTime && subtitle.endTime >= segment.startTime)
   const progress = getSegmentProgress(segment)
@@ -254,7 +297,10 @@ function SegmentInspector({
         <h3>{position ? `第 ${position.index + 1}/${position.total} 段` : '当前段落'}</h3>
         <button disabled={!position || position.index >= position.total - 1} onClick={() => onNavigate('next')}>下一段</button>
       </div>
-      <div className="segment-time-title">{secondsToTimecode(segment.startTime)} - {secondsToTimecode(segment.endTime)}</div>
+      <div className="segment-time-title">
+        {secondsToTimecode(segment.startTime)} - {secondsToTimecode(segment.endTime)}
+        <button type="button" className="seek-button" onClick={() => onSeekTo(segment.startTime)}>▶ 播放本段</button>
+      </div>
       <div className="segment-progress">
         <div>
           <strong>完成度 {progress.percent}%</strong>
@@ -475,6 +521,7 @@ function SegmentInspector({
           blocks={segment.screenplayBlocks ?? []}
           segment={segment}
           onChange={(screenplayBlocks) => onChange({ screenplayBlocks })}
+          onSeekTo={onSeekTo}
         />
         <TextArea
           label="观众体验"
@@ -483,7 +530,7 @@ function SegmentInspector({
           onChange={(audienceExperience) => onChange({ audienceExperience })}
         />
       </section>
-      <SubtitlePreview subtitles={segmentSubtitles} />
+      <SubtitlePreview subtitles={segmentSubtitles} onSeekTo={onSeekTo} />
       <details className="advanced-segment-fields">
         <summary>高级字段（可选）</summary>
         <TextArea label="创作意图" value={segment.creativeIntent} onChange={(creativeIntent) => onChange({ creativeIntent })} />
@@ -515,10 +562,12 @@ function ScreenplayBlockEditor({
   blocks,
   segment,
   onChange,
+  onSeekTo,
 }: {
   blocks: ScreenplayBlock[]
   segment: Segment
   onChange: (blocks: ScreenplayBlock[]) => void
+  onSeekTo: (time: number) => void
 }) {
   function updateBlock(id: string, patch: Partial<ScreenplayBlock>) {
     onChange(blocks.map((block) => (block.id === id ? { ...block, ...patch } : block)))
@@ -563,7 +612,7 @@ function ScreenplayBlockEditor({
                   onChange={(event) => updateBlock(block.id, { time: Number(event.target.value) })}
                   aria-label={`第 ${index + 1} 条时间`}
                 />
-                <span>{secondsToTimecode(block.time ?? segment.startTime)}</span>
+                <button type="button" className="seek-button" onClick={() => onSeekTo(block.time ?? segment.startTime)}>▶ {secondsToTimecode(block.time ?? segment.startTime)}</button>
                 <button type="button" onClick={() => removeBlock(block.id)}>删除</button>
               </div>
               <textarea
@@ -584,7 +633,7 @@ function ScreenplayBlockEditor({
   )
 }
 
-function SubtitlePreview({ subtitles }: { subtitles: Subtitle[] }) {
+function SubtitlePreview({ subtitles, onSeekTo }: { subtitles: Subtitle[]; onSeekTo: (time: number) => void }) {
   return (
     <section className="subtitle-preview">
       <div>
@@ -595,7 +644,7 @@ function SubtitlePreview({ subtitles }: { subtitles: Subtitle[] }) {
         <ol>
           {subtitles.map((subtitle) => (
             <li key={subtitle.id}>
-              <time>{secondsToTimecode(subtitle.startTime)}</time>
+              <button type="button" className="seek-button" onClick={() => onSeekTo(subtitle.startTime)}>▶ {secondsToTimecode(subtitle.startTime)}</button>
               <p>{subtitle.text}</p>
             </li>
           ))}

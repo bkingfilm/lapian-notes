@@ -303,6 +303,46 @@ textarea {
   font-size: 13px;
 }
 
+.video-player-panel {
+  margin-bottom: 12px;
+}
+
+.video-player-panel video {
+  width: 100%;
+  max-height: 220px;
+  border-radius: 8px;
+  background: #0b1220;
+}
+
+.video-player-empty {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 12px;
+  border: 1px dashed #c7d4e8;
+  border-radius: 8px;
+  background: #f6f9ff;
+  color: #4a5b74;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.seek-button {
+  padding: 2px 8px;
+  margin-left: 8px;
+  border: 1px solid #c7d4e8;
+  border-radius: 999px;
+  background: #f6f9ff;
+  color: #2d6cdf;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seek-button:hover {
+  background: #e8f0fe;
+}
+
 .project-manage-footer {
   display: grid;
   gap: 10px;
