@@ -8,7 +8,17 @@ say_line() { printf '%s\n' "$1"; }
 # 1. 找 node:优先系统安装,否则用/下载便携版
 NODE_EXE=""
 if [ "$1" != "--portable" ] && command -v node >/dev/null 2>&1; then
-  NODE_EXE="$(command -v node)"
+  # 工具需要 Node 20.19+ 或 22.12+;版本太旧会启动即崩,改用内置便携版
+  SYS_NODE="$(command -v node)"
+  NODE_VER="$("$SYS_NODE" --version 2>/dev/null | sed 's/^v//')"
+  MAJ="${NODE_VER%%.*}"
+  REST="${NODE_VER#*.}"
+  MIN="${REST%%.*}"
+  if { [ "$MAJ" = "20" ] && [ "${MIN:-0}" -ge 19 ]; } || { [ "$MAJ" = "22" ] && [ "${MIN:-0}" -ge 12 ]; } || [ "${MAJ:-0}" -ge 23 ]; then
+    NODE_EXE="$SYS_NODE"
+  else
+    say_line "检测到电脑上的 Node.js 版本较旧(v$NODE_VER),将自动使用内置运行环境,不影响你原有的 Node。"
+  fi
 fi
 
 if [ -z "$NODE_EXE" ]; then

@@ -10,7 +10,19 @@ function Say($msg) { Write-Host $msg }
 $nodeExe = $null
 if (-not $portable) {
   $cmd = Get-Command node -ErrorAction SilentlyContinue
-  if ($cmd) { $nodeExe = $cmd.Source }
+  if ($cmd) {
+    # 工具需要 Node 20.19+ 或 22.12+;版本太旧会启动即崩,改用内置便携版
+    $verText = (& $cmd.Source --version) 2>$null
+    if ($verText -match 'v(\d+)\.(\d+)') {
+      $maj = [int]$Matches[1]; $min = [int]$Matches[2]
+      $ok = ($maj -eq 20 -and $min -ge 19) -or ($maj -eq 22 -and $min -ge 12) -or ($maj -ge 23)
+      if ($ok) {
+        $nodeExe = $cmd.Source
+      } else {
+        Say "检测到电脑上的 Node.js 版本较旧($verText),将自动使用内置运行环境,不影响你原有的 Node。"
+      }
+    }
+  }
 }
 if (-not $nodeExe) {
   $nodeDir = Join-Path $PSScriptRoot '.node'
@@ -72,8 +84,8 @@ for ($i = 0; $i -lt 90; $i++) {
   if ($proc.HasExited) { break }
 }
 if (-not $ready) {
-  Say '启动失败或超时。最近的服务日志:'
-  Get-Content $serverErrLog -Tail 6 -ErrorAction SilentlyContinue | ForEach-Object { Say $_ }
+  Say '启动失败或超时。服务日志开头:'
+  Get-Content $serverErrLog -TotalCount 12 -ErrorAction SilentlyContinue | ForEach-Object { Say $_ }
   Say '请重新双击 run.bat;若反复失败,把这个窗口截图反馈。'
   exit 1
 }

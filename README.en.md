@@ -27,7 +27,7 @@ Everything runs locally. Your film and notes never leave your machine. Bring you
 
 ## Quick start
 
-Requires Node.js 18+ and a Chromium browser. [ffmpeg](https://ffmpeg.org/) is optional (enables auto-transcoding of RMVB/AVI/HEVC).
+Requires Node.js 20.19+ / 22.12+ (the one-click launchers handle this automatically) and a Chromium browser. [ffmpeg](https://ffmpeg.org/) is optional (enables auto-transcoding of RMVB/AVI/HEVC).
 
 ```bash
 npm install

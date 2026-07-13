@@ -51,7 +51,7 @@
 
 ### 开发者
 
-要求：Node.js 18+，Chrome 内核浏览器（Chrome / Edge）。[ffmpeg](https://ffmpeg.org/) 可选，装了才有 RMVB/AVI/HEVC 等格式的自动转码，H.264 MP4 不需要。
+要求：Node.js 20.19+ 或 22.12+（一键启动脚本会自动处理，手动跑才需要关心），Chrome 内核浏览器（Chrome / Edge）。[ffmpeg](https://ffmpeg.org/) 可选，装了才有 RMVB/AVI/HEVC 等格式的自动转码，H.264 MP4 不需要。
 
 ```bash
 npm install
