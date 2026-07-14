@@ -26,6 +26,15 @@ import { deleteLibraryProject, listLibraryProjects, loadLibraryProject, saveProj
 import { getProjectStoryLines } from './lib/storyLines'
 import { secondsToTimecode } from './lib/timecode'
 import { exportMarkdown, exportScreenplayText } from './lib/markdown'
+import {
+  VIDEO_PICKER_TYPES,
+  deleteVideoHandle,
+  loadVideoHandle,
+  queryHandlePermission,
+  requestHandlePermission,
+  saveVideoHandle,
+  supportsFilePicker,
+} from './lib/videoHandleStore'
 import { toPng } from 'html-to-image'
 
 import type { ExtractProgress } from './lib/videoFrames'
@@ -71,6 +80,10 @@ export default function App() {
 
   // File=用户直接选择的文件;string=本地转码后的 dev server 视频地址
   const videoFileRef = useRef<File | string | null>(null)
+  // 系统文件选择器拿到的句柄,等新项目 id 生成后存进 IndexedDB
+  const pendingVideoHandleRef = useRef<FileSystemFileHandle | null>(null)
+  // 分享长图是否带工具署名,默认开,用户可在导出弹窗关闭
+  const [shareCreditOn, setShareCreditOn] = useState<boolean>(() => localStorage.getItem('lapian.share-credit') !== 'off')
   // 播放器用的视频地址(objectURL 或转码 URL),null=未关联影片
   const [videoPlayerUrl, setVideoPlayerUrl] = useState<string | null>(null)
   const playerRef = useRef<HTMLVideoElement>(null)
@@ -150,6 +163,9 @@ export default function App() {
       })
       .catch(() => {
         setStatus('恢复项目时出现问题，已继续加载文本数据。')
+      })
+      .finally(() => {
+        void tryRestoreVideoHandle(INITIAL_PROJECT)
       })
   }, [])
 
@@ -238,6 +254,75 @@ export default function App() {
     }
   }
 
+  // 「关联影片文件」:有存过的句柄就一键接回(最多点一次浏览器的"允许"),
+  // 没有或失败再走文件选择;选择器选中的文件顺手把句柄存上,下次就免翻了
+  async function handleRelinkClick() {
+    const handle = await loadVideoHandle(project.id).catch(() => null)
+    if (handle) {
+      const permission = await requestHandlePermission(handle)
+      if (permission === 'granted') {
+        try {
+          const file = await handle.getFile()
+          videoFileRef.current = file
+          attachPlayableVideo(file)
+          setStatus(`已接回影片：${file.name}，可以播放和重新抽帧了。`)
+          return
+        } catch {
+          // 原文件可能被移动或删除,走手动选择
+        }
+      }
+    }
+    if (supportsFilePicker()) {
+      let picked: FileSystemFileHandle | undefined
+      try {
+        const handles = await window.showOpenFilePicker!({ types: VIDEO_PICKER_TYPES })
+        picked = handles[0]
+      } catch {
+        return // 用户取消
+      }
+      if (!picked) return
+      try {
+        const file = await picked.getFile()
+        void saveVideoHandle(project.id, picked).catch(() => undefined)
+        videoFileRef.current = file
+        attachPlayableVideo(file)
+        const expected = project.sourceVideoName
+        setStatus(
+          expected && file.name !== expected
+            ? `已关联影片:${file.name}。注意和项目记录的「${expected}」文件名不同,请确认是同一部电影。`
+            : `已关联影片:${file.name},可以播放和重新抽帧了。`,
+        )
+      } catch {
+        setStatus('读取所选文件失败，请重试。')
+      }
+      return
+    }
+    relinkInputRef.current?.click()
+  }
+
+  // 项目载入后尝试用存过的句柄自动接回影片:浏览器还记得授权时零点击,
+  // 只剩"prompt"状态时给个提示引导去点「关联影片文件」
+  async function tryRestoreVideoHandle(target: Project) {
+    if (!target.sourceVideoName || videoFileRef.current) return
+    const handle = await loadVideoHandle(target.id).catch(() => null)
+    if (!handle) return
+    const permission = await queryHandlePermission(handle)
+    if (permission === 'granted') {
+      try {
+        const file = await handle.getFile()
+        videoFileRef.current = file
+        attachPlayableVideo(file)
+        setStatus((current) => `${current ? `${current} ` : ''}影片已自动接回：${file.name}。`)
+      } catch {
+        // 原文件不在了,保持未关联状态
+      }
+      return
+    }
+    if (permission === 'prompt') {
+      setStatus((current) => `${current ? `${current} ` : ''}上次的影片文件还记着,点右侧「关联影片文件」一键接回。`)
+    }
+  }
+
   // 项目恢复后重新关联影片:只接上播放和抽帧能力,不改动项目内容
   function handleRelinkVideo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -292,6 +377,7 @@ export default function App() {
       clearVideoFileReference()
       setLibraryProjects(null)
       setStatus(`已切换到「${target.projectTitle || target.filmTitle || '未命名项目'}」${restored.restoredCount ? `，找回 ${restored.restoredCount} 帧截图` : ''}。需要重新抽帧时再重新选择影片文件即可。`)
+      void tryRestoreVideoHandle(restored.project)
     } catch (error) {
       setStatus(`切换项目失败：${error instanceof Error ? error.message : String(error)}`)
     }
@@ -302,6 +388,7 @@ export default function App() {
     if (!window.confirm(`删除项目「${item?.title ?? '未命名'}」？笔记和帧图缓存会一起删除，无法恢复。`)) return
     try {
       await deleteLibraryProject(id)
+      void deleteVideoHandle(id)
       if (id === project.id) {
         revokeFrameObjectUrls(project.frames)
         clearAutosave()
@@ -559,16 +646,46 @@ export default function App() {
     setStatus('任务已取消。')
   }
 
-  async function handleVideoSelect(e: ChangeEvent<HTMLInputElement>) {
+  function handleVideoSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
+    void processVideoFile(file)
+  }
 
+  // 「导入电影」入口:支持 File System Access API 时用系统选择器拿文件句柄,
+  // 存下句柄后刷新/切项目就能一键接回影片;不支持的浏览器降级走 input
+  async function openVideoPicker() {
+    if (supportsFilePicker()) {
+      let handle: FileSystemFileHandle | undefined
+      try {
+        const handles = await window.showOpenFilePicker!({ types: VIDEO_PICKER_TYPES })
+        handle = handles[0]
+      } catch {
+        return // 用户取消选择
+      }
+      if (!handle) return
+      let file: File
+      try {
+        file = await handle.getFile()
+      } catch {
+        setStatus('读取所选文件失败，请重试。')
+        return
+      }
+      pendingVideoHandleRef.current = handle
+      await processVideoFile(file)
+      return
+    }
+    videoInputRef.current?.click()
+  }
+
+  async function processVideoFile(file: File) {
     const willReplaceCurrentProject = Boolean(project.sourceVideoName || project.frames.length || project.subtitles.length || project.segments.length || project.macroAnalysis)
     if (
       willReplaceCurrentProject &&
       !window.confirm('导入新电影会开始一个新项目。当前项目已自动保存在「我的项目」里，随时可以切回。确定换电影？')
     ) {
-      e.target.value = ''
+      pendingVideoHandleRef.current = null
       return
     }
 
@@ -588,6 +705,9 @@ export default function App() {
     setStatus(`已选择电影：${file.name}`)
     videoFileRef.current = file
     attachPlayableVideo(file)
+    const pendingHandle = pendingVideoHandleRef.current
+    pendingVideoHandleRef.current = null
+    if (pendingHandle) void saveVideoHandle(nextProject.id, pendingHandle).catch(() => undefined)
     const controller = new AbortController()
     taskAbortRef.current = controller
     setExtractAbort(controller)
@@ -603,10 +723,7 @@ export default function App() {
     // 浏览器读不了的格式(RMVB/AVI/HEVC 等)先交给 dev server 本地 ffmpeg 转码
     let videoSource: File | string = file
     const playable = await probeVideoPlayable(file)
-    if (controller.signal.aborted || taskAbortRef.current !== controller) {
-      e.target.value = ''
-      return
-    }
+    if (controller.signal.aborted || taskAbortRef.current !== controller) return
     if (!playable) {
       setExtractPhase('transcode')
       setExtractProgress({ current: 0, total: 100, time: 0 })
@@ -617,10 +734,7 @@ export default function App() {
           setExtractProgress({ current: percent, total: 100, time: 0 })
           updateStatus(`本地转码中：${percent}%`)
         }, controller.signal)
-        if (controller.signal.aborted || taskAbortRef.current !== controller) {
-          e.target.value = ''
-          return
-        }
+        if (controller.signal.aborted || taskAbortRef.current !== controller) return
         if (!transcoded) {
           throw new Error('本地转码接口不可用。请确认工具是用 npm run dev 启动的，且本机装有 ffmpeg。')
         }
@@ -648,7 +762,6 @@ export default function App() {
         taskAbortRef.current = null
         setExtractAbort(null)
         setExtractProgress(null)
-        e.target.value = ''
         return
       }
     }
@@ -656,10 +769,7 @@ export default function App() {
     if (typeof videoSource !== 'string' && !nextProject.subtitles.length) {
       try {
         const embeddedSubtitles = await extractEmbeddedSubtitles(videoSource, controller.signal)
-        if (controller.signal.aborted || taskAbortRef.current !== controller) {
-          e.target.value = ''
-          return
-        }
+        if (controller.signal.aborted || taskAbortRef.current !== controller) return
         if (embeddedSubtitles.length) {
           nextProject = {
             ...nextProject,
@@ -673,23 +783,17 @@ export default function App() {
       } catch (error) {
         if (controller.signal.aborted || taskAbortRef.current !== controller) {
           setExtractPhase('canceled')
-          e.target.value = ''
           return
         }
         if (error instanceof DOMException && error.name === 'AbortError') {
           setExtractPhase('canceled')
-          e.target.value = ''
           return
         }
         setStatus('未能读取电影内嵌字幕，仍继续按 1 秒抽帧准备 AI 素材。')
       }
     }
-    if (controller.signal.aborted || taskAbortRef.current !== controller) {
-      e.target.value = ''
-      return
-    }
+    if (controller.signal.aborted || taskAbortRef.current !== controller) return
     const extracted = await startExtractFrames(true, nextProject, 1, controller)
-    e.target.value = ''
     if (!extracted || controller.signal.aborted) return
     await autoPrepareAnalysisPackage(extracted, controller.signal)
   }
@@ -963,6 +1067,18 @@ export default function App() {
     setIsShareExportOpen(true)
   }
 
+  function toggleShareCredit(next: boolean) {
+    setShareCreditOn(next)
+    localStorage.setItem('lapian.share-credit', next ? 'on' : 'off')
+  }
+
+  // 首次导出成功时在状态栏带一句求 star,只出现一次
+  function withStarHint(message: string): string {
+    if (localStorage.getItem('lapian.star-hint-shown')) return message
+    localStorage.setItem('lapian.star-hint-shown', '1')
+    return `${message}觉得工具有用的话,欢迎到 GitHub 给个 star:github.com/bkingfilm/lapian-notes`
+  }
+
   async function runShareExport(mode: 'structure' | 'full') {
     setIsShareExportOpen(false)
     const target = document.querySelector<HTMLElement>(mode === 'structure' ? '.swimlane-module' : '.story-map')
@@ -970,10 +1086,17 @@ export default function App() {
       setStatus('没有找到可导出的时间轴区域。')
       return
     }
+    let creditEl: HTMLDivElement | null = null
     try {
       setStatus('正在生成分享图,内容多时需要几秒...')
       // 展开横向滚动区,防止长片泳道被裁切
       target.classList.add('share-exporting')
+      if (shareCreditOn) {
+        creditEl = document.createElement('div')
+        creditEl.className = 'share-credit'
+        creditEl.textContent = '由「拉片笔记」生成 · 开源免费 · github.com/bkingfilm/lapian-notes'
+        target.appendChild(creditEl)
+      }
       const dataUrl = await Promise.race([
         toPng(target, {
           backgroundColor: '#ffffff',
@@ -989,10 +1112,11 @@ export default function App() {
       link.href = dataUrl
       link.download = `${project.projectTitle || DEFAULT_PROJECT_TITLE}-${mode === 'structure' ? '结构图' : '完整拉片长图'}.png`
       link.click()
-      setStatus(mode === 'structure' ? '结构图已生成(泳道+情绪曲线),适合直接发社交平台。' : '完整拉片长图已生成,适合存档或给人细读。')
+      setStatus(withStarHint(mode === 'structure' ? '结构图已生成(泳道+情绪曲线),适合直接发社交平台。' : '完整拉片长图已生成,适合存档或给人细读。'))
     } catch (error) {
       setStatus(`生成分享图失败：${error instanceof Error ? error.message : String(error)}`)
     } finally {
+      creditEl?.remove()
       target.classList.remove('share-exporting')
     }
   }
@@ -1011,7 +1135,7 @@ export default function App() {
     if (!markdownPreview) return
     downloadText(`${project.projectTitle || DEFAULT_PROJECT_TITLE}.md`, markdownPreview, 'text/markdown')
     setMarkdownPreview(null)
-    setStatus('Markdown 已导出。')
+    setStatus(withStarHint('Markdown 已导出。'))
   }
 
   function handleExportScreenplayText() {
@@ -1274,7 +1398,7 @@ export default function App() {
         isTaskRunning={isTaskRunning}
         onOpenLibrary={handleOpenLibrary}
         onSaveProjectPackage={handleSaveProjectPackage}
-        onVideoPath={() => videoInputRef.current?.click()}
+        onVideoPath={() => void openVideoPicker()}
         onSubtitle={() => subtitleInputRef.current?.click()}
         onScreenplayResearch={() => screenplayResearchInputRef.current?.click()}
         onGenerateAiPackage={handleGenerateAiPackage}
@@ -1380,7 +1504,7 @@ export default function App() {
           playerRef={playerRef}
           onSeekTo={handleSeekTo}
           onPlayerTimeUpdate={handlePlayerTimeUpdate}
-          onRelinkVideo={() => relinkInputRef.current?.click()}
+          onRelinkVideo={() => void handleRelinkClick()}
         />
       </section>
 
@@ -1412,6 +1536,10 @@ export default function App() {
                 <span>包含结构树全部段落的截图和文字,很长,适合存档或给人细读</span>
               </button>
             </div>
+            <label className="share-credit-toggle">
+              <input type="checkbox" checked={shareCreditOn} onChange={(e) => toggleShareCredit(e.target.checked)} />
+              <span>图末带一行工具署名(让更多人找到这个免费工具)</span>
+            </label>
           </div>
         </section>
       ) : null}

@@ -533,6 +533,24 @@ textarea {
   line-height: 1.5;
 }
 
+.share-credit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+/* 只在导出瞬间挂到时间轴末尾的署名行 */
+.share-credit {
+  padding: 10px 16px 14px;
+  text-align: right;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
 /* 导出瞬间展开横向滚动,保证长片泳道完整入图 */
 .share-exporting .swimlane-scroll {
   overflow: visible !important;
