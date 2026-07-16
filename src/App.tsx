@@ -198,6 +198,19 @@ export default function App() {
     return () => window.clearTimeout(timer)
   }, [frameImageSignature, project])
 
+  // 防止影片没拖准虚线框时,浏览器默认行为直接打开视频文件顶掉整个应用
+  useEffect(() => {
+    const prevent = (event: DragEvent) => {
+      event.preventDefault()
+    }
+    window.addEventListener('dragover', prevent)
+    window.addEventListener('drop', prevent)
+    return () => {
+      window.removeEventListener('dragover', prevent)
+      window.removeEventListener('drop', prevent)
+    }
+  }, [])
+
   const updateProject = (patch: Partial<Project>) => {
     setProject((current) => ({ ...current, ...patch, updatedAt: new Date().toISOString() }))
   }
@@ -723,6 +736,36 @@ export default function App() {
       return
     }
     videoInputRef.current?.click()
+  }
+
+  // 恢复的项目续跑抽帧:影片文件不在手时先走关联流程(句柄一键接回或重新选),再抽帧
+  async function handleResumeExtract() {
+    if (isTaskRunning) {
+      setStatus('当前有任务在进行,等它完成或取消后再继续。')
+      return
+    }
+    if (!videoFileRef.current) {
+      await handleRelinkClick()
+      if (!videoFileRef.current) return
+    }
+    void startExtractFrames(true)
+  }
+
+  // 拖放导入影片:校验类型后走和文件选择完全相同的导入管线
+  function handleDropVideo(file: File, handle?: FileSystemFileHandle) {
+    const looksLikeVideo =
+      file.type.startsWith('video/') ||
+      /\.(mp4|m4v|mov|mkv|avi|webm|rmvb|rm|wmv|flv|ts|mpg|mpeg)$/i.test(file.name)
+    if (!looksLikeVideo) {
+      setStatus(`拖入的「${file.name}」不像影片文件,请拖入 MP4 / MKV / AVI 等视频。`)
+      return
+    }
+    if (isTaskRunning) {
+      setStatus('当前有导入任务在进行,等它完成或取消后再拖入新影片。')
+      return
+    }
+    if (handle) pendingVideoHandleRef.current = handle
+    void processVideoFile(file)
   }
 
   async function processVideoFile(file: File) {
@@ -1495,6 +1538,8 @@ export default function App() {
             onFrameClick={handleFrameClick}
             onSegmentClick={handleSegmentClick}
             onSeekTo={handleSeekTo}
+            onDropVideo={handleDropVideo}
+            onResumeExtract={() => void handleResumeExtract()}
           />
         </section>
 

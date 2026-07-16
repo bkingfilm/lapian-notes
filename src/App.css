@@ -3190,3 +3190,50 @@ textarea {
 .dialogue-density-toggle input {
   margin: 0;
 }
+
+/* 拖影片进虚线区的悬停态 */
+.empty-guide.drag-over {
+  border-color: #2d6cdf;
+  background: #eef4ff;
+  outline: 2px dashed #2d6cdf;
+  outline-offset: -3px;
+  border-radius: 10px;
+}
+
+.empty-guide.drag-over strong {
+  color: #2d6cdf;
+}
+
+.empty-guide.drag-over > * {
+  pointer-events: none;
+}
+
+/* 恢复项目后时间轴缺失的续跑引导 */
+.extract-stalled {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.extract-stalled span {
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.extract-stalled button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #2d6cdf;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.extract-stalled button:hover {
+  background: #2159bd;
+}

@@ -79,9 +79,19 @@ interface FrameTimelineProps {
   onFrameClick: (frame: Frame, shiftKey: boolean) => void
   onSegmentClick: (segmentId: string) => void
   onSeekTo?: (time: number, stopAt?: number) => void
+  onDropVideo?: (file: File, handle?: FileSystemFileHandle) => void
+  onResumeExtract?: () => void
+}
+
+// 拖放的 DataTransferItem 拿文件句柄(Chromium 86+),旧浏览器没有这个方法
+type DataTransferItemWithHandle = DataTransferItem & {
+  getAsFileSystemHandle?: () => Promise<FileSystemHandle | null>
 }
 
 export function FrameTimeline(props: FrameTimelineProps) {
+  // 拖入影片的悬停高亮:进出子元素会连发 enter/leave,用计数器防闪烁
+  const [isDragOver, setIsDragOver] = useState(false)
+  const dragDepthRef = useRef(0)
   const timelineDuration = Math.max(
     ...props.frames.map((frame) => frame.time),
     ...props.segments.map((segment) => segment.endTime),
@@ -134,13 +144,18 @@ export function FrameTimeline(props: FrameTimelineProps) {
       !extractIsFailed &&
       ['transcode', 'subtitle', 'metadata', 'frames', 'cache'].includes(props.extractPhase ?? 'idle'),
   )
+  // 有影片名、没有帧、也没有任务在跑:典型场景是抽帧中途刷新了页面,
+  // 项目从自动保存恢复但任务不会自动续跑,必须明说,不能假装"正在生成"
+  const extractIsStalled = Boolean(props.hasVideo && !extractIsCanceled && !extractIsFailed && !extractIsActive)
   const emptyGuideTitle = !props.hasVideo
     ? '请先导入电影'
     : extractIsCanceled
       ? '已取消生成时间轴'
       : extractIsFailed
         ? '生成时间轴失败'
-        : '已导入电影，正在生成时间轴'
+        : extractIsStalled
+          ? '项目已恢复，但时间轴还没生成'
+          : '已导入电影，正在生成时间轴'
   const isTranscoding = props.extractPhase === 'transcode'
   const extractProgressText = isTranscoding
     ? `本地转码中｜${extractPercent}%`
@@ -159,12 +174,66 @@ export function FrameTimeline(props: FrameTimelineProps) {
         ? '任务已取消，没有继续读取影片或生成时间轴。'
         : props.extractError || extractPhaseDetail(props.extractPhase)
 
+  function handleDragEnter(event: React.DragEvent) {
+    if (!props.onDropVideo || !event.dataTransfer.types.includes('Files')) return
+    event.preventDefault()
+    dragDepthRef.current += 1
+    setIsDragOver(true)
+  }
+
+  function handleDragOver(event: React.DragEvent) {
+    if (!props.onDropVideo || !event.dataTransfer.types.includes('Files')) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }
+
+  function handleDragLeave(event: React.DragEvent) {
+    if (!props.onDropVideo) return
+    event.preventDefault()
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0) setIsDragOver(false)
+  }
+
+  function handleDrop(event: React.DragEvent) {
+    if (!props.onDropVideo) return
+    event.preventDefault()
+    dragDepthRef.current = 0
+    setIsDragOver(false)
+    const file = event.dataTransfer.files?.[0]
+    if (!file) return
+    const onDropVideo = props.onDropVideo
+    // 句柄要在 drop 事件里同步取,拿到了刷新后就能一键接回影片
+    const item = event.dataTransfer.items?.[0] as DataTransferItemWithHandle | undefined
+    const handlePromise = item?.getAsFileSystemHandle?.() ?? Promise.resolve(null)
+    handlePromise
+      .then((handle) => onDropVideo(file, handle?.kind === 'file' ? (handle as FileSystemFileHandle) : undefined))
+      .catch(() => onDropVideo(file, undefined))
+  }
+
   return (
     <section className="timeline-panel">
       {props.frames.length === 0 ? (
-        <div className="empty-guide">
-          <strong>{emptyGuideTitle}</strong>
-          {props.hasVideo ? (
+        <div
+          className={`empty-guide ${isDragOver ? 'drag-over' : ''}`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <strong>{isDragOver ? '松手导入这部影片' : emptyGuideTitle}</strong>
+          {props.hasVideo && extractIsStalled ? (
+            <div className="extract-stalled">
+              <span>
+                上次的抽帧没有完成，常见原因是中途刷新或关闭了页面，任务不会自动续跑。
+                点下面的按钮继续：会先接回影片文件（必要时让你重新选一次），然后重新抽帧。
+                也可以直接拖一部新影片进来换电影。
+              </span>
+              {props.onResumeExtract ? (
+                <button type="button" onClick={props.onResumeExtract}>继续生成时间轴</button>
+              ) : null}
+            </div>
+          ) : null}
+          {props.hasVideo && !extractIsStalled ? (
             <div className={`extract-progress ${extractIsFailed ? 'has-error' : ''} ${extractIsCanceled ? 'is-canceled' : ''}`}>
               <div className="extract-progress-header">
                 <b>{extractProgressText}</b>
@@ -183,7 +252,7 @@ export function FrameTimeline(props: FrameTimelineProps) {
           ) : null}
           {!props.hasVideo ? (
             <span>
-              按上方流程从第 1 步开始：导入电影后，转码、抽帧、字幕和 AI 分析包都会自动完成。
+              把影片文件直接拖进这个虚线框，或按上方流程点「导入电影」。之后转码、抽帧、字幕和 AI 分析包都会自动完成。
             </span>
           ) : null}
         </div>
