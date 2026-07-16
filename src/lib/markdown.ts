@@ -3,7 +3,6 @@ import { getMacroProgress } from './macroProgress'
 import { getSegmentCoverage } from './segmentCoverage'
 import { getSegmentProgress } from './segmentProgress'
 import { buildStoryStructure, segmentStorySummary, segmentStructuralRole, storyLineLabelForSegment } from './storyStructure'
-import { formatShotSeconds, getCutDensity, getShotStats } from './shotStats'
 import { secondsToTimecode } from './timecode'
 import { frameFileName } from './frameFileName'
 import { normalizeTimelineBlock } from './timelineBlock'
@@ -118,7 +117,6 @@ export function exportMarkdown(project: Project): string {
     ...(project.audienceCurvePoints?.length
       ? renderAudienceCurveMarkdown(project)
       : []),
-    ...renderShotRhythmMarkdown(project, sortedSegments),
     ...(sortedSegments.length
       ? [
           ...renderStoryStructure(sortedSegments, project.subtitles),
@@ -255,41 +253,6 @@ function renderSharedModuleExport(segment: Segment): string[] {
     `- 重要性：${formatImportance(block.importance)}`,
     block.structureRole ? `- 结构作用：${block.structureRole}` : '',
   ].filter(Boolean)
-}
-
-function renderShotRhythmMarkdown(project: Project, segments: Segment[]): string[] {
-  const detection = project.shotDetection
-  if (!detection?.cuts.length) return []
-  const duration = Math.max(project.duration, detection.cuts[detection.cuts.length - 1] ?? 0)
-  const stats = getShotStats(detection.cuts, duration)
-  if (!stats) return []
-  const density = getCutDensity(detection.cuts, duration, 60)
-  const fastest = density.length ? density.reduce((best, bucket) => (bucket.cutCount > best.cutCount ? bucket : best), density[0]) : null
-  const lines = [
-    '## 镜头节奏统计（自动检测）',
-    '',
-    '> 工具静音快速播放整片、按画面差分自动检测硬切得出。溶解等渐变转场不计入，数值当量级参考。',
-    '',
-    `- 镜头总数：约 ${stats.shotCount} 个`,
-    `- 平均镜头长（ASL）：${formatShotSeconds(stats.averageShotSeconds)}`,
-    `- 中位镜头长：${formatShotSeconds(stats.medianShotSeconds)}`,
-    `- 最长镜头：${formatShotSeconds(stats.maxShotSeconds)}`,
-    fastest && fastest.cutCount ? `- 剪辑最快的一分钟：${secondsToTimecode(fastest.startTime)} 起，切换 ${fastest.cutCount} 次` : '',
-    '',
-  ]
-  const segmentRows = segments
-    .map((segment) => ({ segment, stats: getShotStats(detection.cuts, Math.max(duration, segment.endTime), segment.startTime, segment.endTime) }))
-    .filter((row) => row.stats)
-  if (segmentRows.length) {
-    lines.push('| 段落 | 时间范围 | 镜头数 | 平均镜头长 |', '|---|---|---:|---:|')
-    for (const row of segmentRows) {
-      lines.push(
-        `| ${escapeCell(row.segment.title || row.segment.type)} | ${secondsToTimecode(row.segment.startTime)} - ${secondsToTimecode(row.segment.endTime)} | ${row.stats!.shotCount} | ${formatShotSeconds(row.stats!.averageShotSeconds)} |`,
-      )
-    }
-    lines.push('')
-  }
-  return lines
 }
 
 function renderAudienceCurveMarkdown(project: Project): string[] {

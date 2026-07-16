@@ -2,7 +2,6 @@ import type { Project, Segment, Subtitle } from '../types'
 import { compactProjectForPersistence, normalizeLoadedProject } from './project'
 import { exportMarkdown } from './markdown'
 import { frameFileName, imageMimeFromFileName, possibleFrameFileNames } from './frameFileName'
-import { getShotStats } from './shotStats'
 import { secondsToTimecode } from './timecode'
 
 interface ZipEntry {
@@ -71,9 +70,6 @@ export async function exportAiAnalysisPackage(project: Project): Promise<FileSav
           createTextEntry('subtitles.json', JSON.stringify(project.subtitles, null, 2)),
           createTextEntry('subtitles.srt', buildSrt(project)),
         ]
-      : []),
-    ...(project.shotDetection?.cuts.length
-      ? [createTextEntry('shots.json', JSON.stringify(buildShotMeta(project), null, 2))]
       : []),
     ...(await Promise.all(
       exportableFrames.map(async (frame) => createBinaryEntry('frames/' + frameFileName(frame), await dataUrlToBytes(frame.src))),
@@ -211,20 +207,6 @@ function createTextEntry(path: string, content: string): ZipEntry {
   return createBinaryEntry(path, textEncoder.encode(content))
 }
 
-function buildShotMeta(project: Project) {
-  const detection = project.shotDetection!
-  const duration = Math.max(project.duration, detection.cuts[detection.cuts.length - 1] ?? 0)
-  const stats = getShotStats(detection.cuts, duration)
-  return {
-    note: '工具自动检测的镜头切点,单位秒,只含硬切,溶解等渐变转场不计入。',
-    analyzedAt: detection.analyzedAt,
-    shotCount: stats?.shotCount ?? 0,
-    averageShotSeconds: stats ? Number(stats.averageShotSeconds.toFixed(2)) : 0,
-    medianShotSeconds: stats ? Number(stats.medianShotSeconds.toFixed(2)) : 0,
-    cuts: detection.cuts,
-  }
-}
-
 function buildAiReadme(project: Project): string {
   return [
     '# ' + (project.projectTitle || project.filmTitle || DEFAULT_PROJECT_NAME) + ' AI 分析包',
@@ -238,7 +220,6 @@ function buildAiReadme(project: Project): string {
     '- project.json：影片元数据和帧时间。',
     '- prompt.md：给 AI 的分析任务。',
     '- schema.json：AI 必须返回的 JSON 结构。',
-    project.shotDetection?.cuts.length ? '- shots.json：工具自动检测的镜头切点（秒）和节奏统计，只含硬切。' : '',
     '',
     '请把 AI 返回的 JSON 文件导入回“拉片笔记”的“导入 AI 结果”。',
   ].filter(Boolean).join('\n')
@@ -260,9 +241,6 @@ function buildAiPrompt(project: Project): string {
     '7. 事实纪律：人物名、地名、身份、故事发生地等设定必须以字幕和画面证据为准，没有证据就不要写；宁可留空，不要脑补。',
     '8. keyBeats 里每个节拍前面标注时间码（如“52:30 小鱼提出同住”），方便人工回看核对。',
     '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
-    project.shotDetection?.cuts.length
-      ? '补充：shots.json 是工具自动检测的镜头切点和节奏统计。写 rhythmDesign 和 techniques 时请参考每段真实的切换密度，不要凭感觉描述节奏快慢。'
-      : '',
     '',
     '请严格返回 JSON，不要输出 JSON 之外的说明。JSON 顶层必须包含 movieIdentity 和 segments，可选包含 macroAnalysis、storyLines。',
     'movieIdentity 必须原样带回影片名、项目名和源视频文件名，用于工具导入时校验是否选错电影。',

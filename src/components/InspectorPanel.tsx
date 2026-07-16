@@ -1,12 +1,11 @@
 ﻿import type { RefObject } from 'react'
-import type { Frame, Project, Segment, ShotDetection, StoryLine, Subtitle } from '../types'
+import type { Frame, Project, Segment, StoryLine, Subtitle } from '../types'
 import { narrativeOrders, segmentTypes } from '../types'
 import type { ScreenplayBlock } from '../types'
 import { hasMeaningfulProjectContent, segmentColors } from '../lib/project'
 import { secondsToTimecode } from '../lib/timecode'
 import { getSegmentProgress } from '../lib/segmentProgress'
 import { getSegmentQuality } from '../lib/segmentQuality'
-import { formatShotSeconds, getSegmentShotStats } from '../lib/shotStats'
 import { segmentTypeHints, narrativeOrderHints } from '../lib/glossary'
 import { getProjectStoryLines, normalizeLineId } from '../lib/storyLines'
 
@@ -55,8 +54,6 @@ export function InspectorPanel(props: InspectorPanelProps) {
           frames={props.frames}
           subtitles={props.project.subtitles}
           storyLines={getProjectStoryLines(props.project)}
-          shotDetection={props.project.shotDetection}
-          projectDuration={props.project.duration}
           segment={props.selectedSegment}
           position={props.selectedSegmentPosition}
           boundaryFrame={props.boundaryFrame}
@@ -195,8 +192,6 @@ function SegmentInspector({
   frames,
   subtitles,
   storyLines,
-  shotDetection,
-  projectDuration,
   segment,
   position,
   boundaryFrame,
@@ -210,8 +205,6 @@ function SegmentInspector({
   frames: Frame[]
   subtitles: Subtitle[]
   storyLines: StoryLine[]
-  shotDetection?: ShotDetection
-  projectDuration: number
   segment: Segment
   position?: { index: number; total: number }
   boundaryFrame?: Frame
@@ -225,7 +218,6 @@ function SegmentInspector({
   const segmentSubtitles = subtitles.filter((subtitle) => subtitle.startTime <= segment.endTime && subtitle.endTime >= segment.startTime)
   const progress = getSegmentProgress(segment)
   const quality = getSegmentQuality(segment, frames, subtitles, frames.length > 1 ? frames[1].time - frames[0].time : 5)
-  const segmentShotStats = getSegmentShotStats(shotDetection, segment, Math.max(projectDuration, segment.endTime))
   const primaryLine = normalizeLineId(segment.primaryLine, storyLines) ?? storyLines[0].id
   const sharedLines = normalizeSharedLineIds(segment.sharedLines, primaryLine, storyLines)
   const isShared = segment.isShared ?? sharedLines.length > 1
@@ -299,10 +291,7 @@ function SegmentInspector({
       <div className={`segment-quality ${quality.warnings.length ? 'warn' : 'ready'}`}>
         <div>
           <strong>段落诊断</strong>
-          <span>
-            {secondsToTimecode(quality.duration)}｜画面 {quality.frameCount}｜字幕 {quality.subtitleCount}
-            {segmentShotStats ? `｜镜头 ${segmentShotStats.shotCount}｜均长 ${formatShotSeconds(segmentShotStats.averageShotSeconds)}` : ''}
-          </span>
+          <span>{secondsToTimecode(quality.duration)}｜画面 {quality.frameCount}｜字幕 {quality.subtitleCount}</span>
         </div>
         {quality.warnings.length ? (
           <ul>
