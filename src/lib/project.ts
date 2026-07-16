@@ -123,7 +123,6 @@ export function hasMeaningfulProjectContent(project: Project): boolean {
       project.sourceVideoName ||
       project.subtitlePath ||
       project.learningGoal?.trim() ||
-      project.screenplayResearch?.trim() ||
       project.aiSummary?.trim() ||
       project.frames.length ||
       project.subtitles.length ||
@@ -177,8 +176,6 @@ export function updateSegmentWithAi(segment: Segment, analysis: Partial<Segment>
     keyBeats: mergeAiField(segment.keyBeats, analysis.keyBeats, mode),
     screenplayDraft: mergeAiField(segment.screenplayDraft, analysis.screenplayDraft, mode),
     screenplayBlocks: mergeScreenplayBlocks(segment.screenplayBlocks, analysis.screenplayBlocks, mode),
-    screenplaySceneIds: mergeSceneIds(segment.screenplaySceneIds, analysis.screenplaySceneIds, mode),
-    screenplaySceneNote: mergeAiField(segment.screenplaySceneNote, analysis.screenplaySceneNote, mode),
     creativeIntent: mergeAiField(segment.creativeIntent, analysis.creativeIntent, mode),
     informationControl: mergeAiField(segment.informationControl, analysis.informationControl, mode),
     rhythmDesign: mergeAiField(segment.rhythmDesign, analysis.rhythmDesign, mode),
@@ -212,17 +209,6 @@ function mergeScreenplayBlocks(
   if (mode === 'replace') return incoming
   if (mode === 'append') return [...(current ?? []), ...incoming]
   return current?.length ? current : incoming
-}
-
-function mergeSceneIds(current: number[] | undefined, incoming: number[] | undefined, mode: AiWriteMode): number[] | undefined {
-  if (!incoming?.length) return current
-  if (mode === 'replace') return normalizeSceneIds(incoming)
-  if (mode === 'append') return normalizeSceneIds([...(current ?? []), ...incoming])
-  return current?.length ? current : normalizeSceneIds(incoming)
-}
-
-function normalizeSceneIds(values: number[]): number[] {
-  return [...new Set(values.map((value) => Math.round(value)).filter((value) => Number.isFinite(value) && value > 0))].sort((a, b) => a - b)
 }
 
 function mergeAiField(current: string | undefined, incoming: string | undefined, mode: AiWriteMode): string | undefined {

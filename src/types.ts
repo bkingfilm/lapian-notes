@@ -14,7 +14,6 @@
   macroAnalysis?: MacroAnalysis
   audienceCurvePoints?: AudienceCurvePoint[]
   learningGoal?: string
-  screenplayResearch?: string
   shotDetection?: ShotDetection
   aiSummary?: string
   createdAt: string
@@ -66,8 +65,6 @@ export interface Segment {
   keyBeats?: string
   screenplayDraft?: string
   screenplayBlocks?: ScreenplayBlock[]
-  screenplaySceneIds?: number[]
-  screenplaySceneNote?: string
   creativeIntent?: string
   informationControl?: string
   rhythmDesign?: string

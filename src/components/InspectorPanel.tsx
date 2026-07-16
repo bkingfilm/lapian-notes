@@ -9,7 +9,6 @@ import { getSegmentQuality } from '../lib/segmentQuality'
 import { formatShotSeconds, getSegmentShotStats } from '../lib/shotStats'
 import { segmentTypeHints, narrativeOrderHints } from '../lib/glossary'
 import { getProjectStoryLines, normalizeLineId } from '../lib/storyLines'
-import { matchScreenplayScenes, parseScreenplaySceneClues } from '../lib/screenplayResearch'
 
 interface InspectorPanelProps {
   project: Project
@@ -55,7 +54,6 @@ export function InspectorPanel(props: InspectorPanelProps) {
         <SegmentInspector
           frames={props.frames}
           subtitles={props.project.subtitles}
-          screenplayResearch={props.project.screenplayResearch}
           storyLines={getProjectStoryLines(props.project)}
           shotDetection={props.project.shotDetection}
           projectDuration={props.project.duration}
@@ -116,7 +114,6 @@ function VideoPlayerPanel({
 
 function ProjectManager({ project, onChange, onDelete }: { project: Project; onChange: (patch: Partial<Project>) => void; onDelete: () => void }) {
   const mergedTitle = project.projectTitle || project.filmTitle
-  const totalSceneClues = parseScreenplaySceneClues(project.screenplayResearch, 200).length
 
   return (
     <section className="inspector-section">
@@ -135,21 +132,6 @@ function ProjectManager({ project, onChange, onDelete }: { project: Project; onC
           onChange={(event) => onChange({ learningGoal: event.target.value })}
         />
       </label>
-      <label className="field">
-        <span>剧本/剧情资料<small className="optional-tag">选填</small></span>
-        <textarea
-          className="screenplay-research-input"
-          value={project.screenplayResearch ?? ''}
-          placeholder="粘贴或导入公开剧本、剧情梗概、访谈、影评资料或链接，AI 会结合这些资料还原时间轴文本。"
-          onChange={(event) => onChange({ screenplayResearch: event.target.value })}
-        />
-      </label>
-      {project.screenplayResearch?.trim() ? (
-        <div className="research-state">
-          已载入剧本/剧情资料约 {project.screenplayResearch.trim().length.toLocaleString()} 字
-          {totalSceneClues ? `，识别出 ${totalSceneClues} 个场景线索` : '，暂未识别到明确场景头'}。生成 AI 分析包时会一起提供给 AI。
-        </div>
-      ) : null}
       <div className="project-manage-footer">
         <p>换一部电影：直接点顶部「更换电影」，会自动开始新项目。当前项目想留档就先点「保存」导出 ZIP。</p>
         {hasMeaningfulProjectContent(project) ? (
@@ -212,7 +194,6 @@ function FrameInspector({
 function SegmentInspector({
   frames,
   subtitles,
-  screenplayResearch,
   storyLines,
   shotDetection,
   projectDuration,
@@ -228,7 +209,6 @@ function SegmentInspector({
 }: {
   frames: Frame[]
   subtitles: Subtitle[]
-  screenplayResearch?: string
   storyLines: StoryLine[]
   shotDetection?: ShotDetection
   projectDuration: number
@@ -246,17 +226,6 @@ function SegmentInspector({
   const progress = getSegmentProgress(segment)
   const quality = getSegmentQuality(segment, frames, subtitles, frames.length > 1 ? frames[1].time - frames[0].time : 5)
   const segmentShotStats = getSegmentShotStats(shotDetection, segment, Math.max(projectDuration, segment.endTime))
-  const segmentMatchText = [
-    segment.title,
-    segment.screenplayDraft,
-    segment.keyBeats,
-    segmentSubtitles.map((subtitle) => subtitle.text).join(' '),
-  ].filter(Boolean).join('\n')
-  const sceneMatches = matchScreenplayScenes(screenplayResearch, segmentMatchText, position?.index ?? 0, position?.total ?? 1, 4)
-  const sceneClues = sceneMatches.map((match) => match.scene)
-  const allSceneClues = parseScreenplaySceneClues(screenplayResearch, 200)
-  const matchedSceneIds = segment.screenplaySceneIds ?? []
-  const matchedScenes = allSceneClues.filter((scene) => matchedSceneIds.includes(scene.index))
   const primaryLine = normalizeLineId(segment.primaryLine, storyLines) ?? storyLines[0].id
   const sharedLines = normalizeSharedLineIds(segment.sharedLines, primaryLine, storyLines)
   const isShared = segment.isShared ?? sharedLines.length > 1
@@ -343,60 +312,6 @@ function SegmentInspector({
           <p>段落范围清晰，可继续补充剧本分析。</p>
         )}
       </div>
-
-      {sceneClues.length ? (
-        <section className="reference-scene-panel">
-          <div>
-            <strong>对应剧本/剧情场景</strong>
-            <span>{matchedScenes.length ? `已匹配 ${matchedScenes.length} 个场景` : '可先采用推荐场景，再人工核对。'}</span>
-          </div>
-          <label className="field compact">
-            <span>场景编号</span>
-            <input
-              value={matchedSceneIds.join('、')}
-              placeholder="比如：1、2、3"
-              onChange={(event) => onChange({ screenplaySceneIds: parseSceneIdInput(event.target.value) })}
-            />
-          </label>
-          <div className="reference-scene-actions">
-            <button
-              type="button"
-              onClick={() => onChange({
-                screenplaySceneIds: sceneMatches.map((match) => match.scene.index),
-                screenplaySceneNote: sceneMatches.map((match) => `${match.scene.index}. ${match.scene.heading}：${match.reason}`).join('\n'),
-              })}
-            >
-              采用推荐
-            </button>
-            <button type="button" onClick={() => onChange({ screenplaySceneIds: [], screenplaySceneNote: '' })}>清除匹配</button>
-          </div>
-          {matchedScenes.length ? (
-            <ol>
-              {matchedScenes.map((scene) => (
-                <li key={`${scene.index}-${scene.heading}`}>
-                  <strong>{scene.index}. {scene.heading}</strong>
-                  {scene.excerpt ? <p>{scene.excerpt}</p> : null}
-                </li>
-              ))}
-            </ol>
-          ) : null}
-          <ol>
-            {sceneMatches.map((match) => (
-              <li key={`${match.scene.index}-${match.scene.heading}`}>
-                <strong>{match.scene.index}. {match.scene.heading}</strong>
-                <span>匹配：{Math.round(match.score * 100)}%｜{match.reason}</span>
-                {match.scene.excerpt ? <p>{match.scene.excerpt}</p> : null}
-              </li>
-            ))}
-          </ol>
-          <TextArea
-            label="资料场景备注"
-            placeholder="记录为什么把这几个资料场景对应到当前电影段落，或标记待人工核对。"
-            value={segment.screenplaySceneNote}
-            onChange={(screenplaySceneNote) => onChange({ screenplaySceneNote })}
-          />
-        </section>
-      ) : null}
 
       {boundaryFrame ? (
         <div className="boundary-actions">
@@ -561,12 +476,6 @@ function SegmentInspector({
       <button className="danger-button" onClick={onDelete}>删除当前段落</button>
     </section>
   )
-}
-
-function parseSceneIdInput(value: string): number[] {
-  return [...new Set(value.split(/[、,\s]+/).map((item) => Number(item)).filter((item) => Number.isFinite(item) && item > 0))]
-    .map((item) => Math.round(item))
-    .sort((a, b) => a - b)
 }
 
 function normalizeSharedLineIds(lines: string[] | undefined, primaryLine: string, storyLines: StoryLine[]): string[] {

@@ -2451,75 +2451,6 @@ textarea {
   overflow-wrap: anywhere;
 }
 
-.screenplay-research-input {
-  min-height: 120px;
-  max-height: 260px;
-}
-
-.research-state {
-  padding: 8px 10px;
-  border: 1px solid #b9c7e8;
-  border-radius: 6px;
-  color: #1f3b73;
-  background: #f3f7ff;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.screenplay-clues,
-.reference-scene-panel {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid #d9dde3;
-  border-radius: 6px;
-  color: #536071;
-  background: #f8fafc;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.screenplay-clues summary {
-  cursor: pointer;
-  color: #17202a;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.screenplay-clues ol,
-.reference-scene-panel ol {
-  display: grid;
-  gap: 6px;
-  max-height: 190px;
-  overflow: auto;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.screenplay-clues li,
-.reference-scene-panel li {
-  display: grid;
-  gap: 3px;
-  padding: 7px;
-  border-radius: 4px;
-  background: #ffffff;
-}
-
-.screenplay-clues strong,
-.reference-scene-panel strong {
-  color: #17202a;
-  font-size: 12px;
-}
-
-.screenplay-clues span,
-.reference-scene-panel span,
-.reference-scene-panel p {
-  margin: 0;
-  color: #667085;
-  overflow-wrap: anywhere;
-}
-
 .frame-interval-note {
   display: grid;
   gap: 4px;
@@ -2709,17 +2640,6 @@ textarea {
   gap: 4px;
   margin: 0;
   padding-left: 18px;
-}
-
-.reference-scene-panel > div {
-  display: grid;
-  gap: 2px;
-}
-
-.reference-scene-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .screenplay-block-editor {

@@ -54,7 +54,7 @@ export async function exportProjectPackage(project: Project): Promise<FileSaveRe
 
 // 上传 ZIP 给 AI 时配的开场白。任务详情在包内 prompt.md,但 AI 不会主动解压,必须由这句话触发
 export function buildAiChatMessage(): string {
-  return '解压这个 ZIP，严格按照包内 prompt.md 的要求分析这部电影，参考 frames/ 截图、subtitles.srt 和剧情资料，最终只输出符合 schema.json 结构的 JSON 文件给我下载，不要输出 JSON 之外的内容。'
+  return '解压这个 ZIP，严格按照包内 prompt.md 的要求分析这部电影，参考 frames/ 截图和 subtitles.srt，最终只输出符合 schema.json 结构的 JSON 文件给我下载，不要输出 JSON 之外的内容。'
 }
 
 export async function exportAiAnalysisPackage(project: Project): Promise<FileSaveResult> {
@@ -70,12 +70,6 @@ export async function exportAiAnalysisPackage(project: Project): Promise<FileSav
       ? [
           createTextEntry('subtitles.json', JSON.stringify(project.subtitles, null, 2)),
           createTextEntry('subtitles.srt', buildSrt(project)),
-        ]
-      : []),
-    ...(project.screenplayResearch?.trim()
-      ? [
-          createTextEntry('剧情资料.md', project.screenplayResearch),
-          createTextEntry('research.md', project.screenplayResearch),
         ]
       : []),
     ...(project.shotDetection?.cuts.length
@@ -244,7 +238,6 @@ function buildAiReadme(project: Project): string {
     '- project.json：影片元数据和帧时间。',
     '- prompt.md：给 AI 的分析任务。',
     '- schema.json：AI 必须返回的 JSON 结构。',
-    project.screenplayResearch?.trim() ? '- 剧情资料.md / research.md：用户导入的剧本、评论或剧情资料。' : '',
     project.shotDetection?.cuts.length ? '- shots.json：工具自动检测的镜头切点（秒）和节奏统计，只含硬切。' : '',
     '',
     '请把 AI 返回的 JSON 文件导入回“拉片笔记”的“导入 AI 结果”。',
@@ -267,7 +260,6 @@ function buildAiPrompt(project: Project): string {
     '7. 事实纪律：人物名、地名、身份、故事发生地等设定必须以字幕和画面证据为准，没有证据就不要写；宁可留空，不要脑补。',
     '8. keyBeats 里每个节拍前面标注时间码（如“52:30 小鱼提出同住”），方便人工回看核对。',
     '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
-    project.screenplayResearch?.trim() ? '10. 剧情资料.md / research.md 中包含用户提供的剧本、评论或剧情资料，请用它校正段落划分和故事理解。' : '',
     project.shotDetection?.cuts.length
       ? '补充：shots.json 是工具自动检测的镜头切点和节奏统计。写 rhythmDesign 和 techniques 时请参考每段真实的切换密度，不要凭感觉描述节奏快慢。'
       : '',

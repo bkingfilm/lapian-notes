@@ -6,7 +6,6 @@ import { buildStoryStructure, segmentStorySummary, segmentStructuralRole, storyL
 import { formatShotSeconds, getCutDensity, getShotStats } from './shotStats'
 import { secondsToTimecode } from './timecode'
 import { frameFileName } from './frameFileName'
-import { parseScreenplaySceneClues } from './screenplayResearch'
 import { normalizeTimelineBlock } from './timelineBlock'
 
 const timelineLineLabels: Record<string, string> = {
@@ -64,7 +63,6 @@ export function exportMarkdown(project: Project): string {
     : 0
   const hasMacro = Boolean(macro)
   const hasTimeline = project.frames.length > 0 || sortedSegments.length > 0 || project.subtitles.length > 0
-  const sceneClues = parseScreenplaySceneClues(project.screenplayResearch, 120)
   const screenplayStats = getScreenplayBlockStats(sortedSegments)
 
   return [
@@ -89,28 +87,9 @@ export function exportMarkdown(project: Project): string {
     sortedSegments.length ? `- 段落平均完成度：${averageSegmentProgress}%` : '',
     hasTimeline ? `- 时间轴缺口：${coverage.gaps.length ? coverage.gaps.map((gap) => `${secondsToTimecode(gap.startTime)} - ${secondsToTimecode(gap.endTime)}`).join('；') : '无明显缺口'}` : '',
     project.learningGoal ? `- 拆解目标：${project.learningGoal}` : '',
-    project.screenplayResearch ? `- 已提供剧本/剧情资料：有` : '',
     '',
     ...(hasTimeline || sortedSegments.length || hasMacro
       ? renderRevisionChecklist(project, sortedSegments, coverage, macroProgress)
-      : []),
-    ...(project.screenplayResearch
-      ? [
-          '## 剧本/剧情资料',
-          '',
-          ...(sceneClues.length
-            ? [
-                '### 场景线索',
-                '',
-                ...sceneClues.map((scene) => `${scene.index}. ${scene.heading}${scene.excerpt ? `｜${scene.excerpt}` : ''}`),
-                '',
-                '### 原始资料',
-                '',
-              ]
-            : []),
-          project.screenplayResearch,
-          '',
-        ]
       : []),
     ...(hasMacro
       ? [
@@ -150,11 +129,11 @@ export function exportMarkdown(project: Project): string {
           '',
           '## 文字剧本时间轴',
           '',
-          '| 时间范围 | 时长 | 剧情线 | 类型 | 标题 | 资料场景 | 完成度 | 待补字段 | 段落作用 | 关键节拍 | 观众体验 |',
-          '|---|---:|---|---|---|---:|---|---|---|---|---|',
+          '| 时间范围 | 时长 | 剧情线 | 类型 | 标题 | 完成度 | 待补字段 | 段落作用 | 关键节拍 | 观众体验 |',
+          '|---|---:|---|---|---|---|---|---|---|---|',
           ...sortedSegments.map((segment) => {
             const progress = getSegmentProgress(segment)
-            return `| ${secondsToTimecode(segment.startTime)} - ${secondsToTimecode(segment.endTime)} | ${formatDuration(segment)} | ${escapeCell(storyLineLabelForSegment(segment))} | ${escapeCell(segment.type)} | ${escapeCell(segment.title)} | ${escapeCell(formatSceneIds(segment.screenplaySceneIds))} | ${progress.percent}% | ${escapeCell(progress.missing.join('、') || '无')} | ${escapeCell(segmentStructuralRole(segment))} | ${escapeCell(segment.keyBeats)} | ${escapeCell(segment.audienceExperience)} |`
+            return `| ${secondsToTimecode(segment.startTime)} - ${secondsToTimecode(segment.endTime)} | ${formatDuration(segment)} | ${escapeCell(storyLineLabelForSegment(segment))} | ${escapeCell(segment.type)} | ${escapeCell(segment.title)} | ${progress.percent}% | ${escapeCell(progress.missing.join('、') || '无')} | ${escapeCell(segmentStructuralRole(segment))} | ${escapeCell(segment.keyBeats)} | ${escapeCell(segment.audienceExperience)} |`
           }),
           '',
           '## 剧本还原提纲',
@@ -195,16 +174,8 @@ function renderRevisionChecklist(
   const lowConfidenceSegments = segments
     .map((segment, index) => ({ segment, index }))
     .filter(({ segment }) => typeof segment.confidence === 'number' && segment.confidence < 0.6)
-  const noSourceSegments = project.screenplayResearch?.trim()
-    ? segments
-        .map((segment, index) => ({ segment, index }))
-        .filter(({ segment }) => !segment.screenplaySceneIds?.length)
-    : []
   const checklist: string[] = []
 
-  if (!project.screenplayResearch?.trim()) {
-    checklist.push('- 未导入剧本/剧情资料：建议补充公开剧本、剧情梗概、访谈或可信影评后再核对剧情还原。')
-  }
   if (!project.subtitles.length) {
     checklist.push('- 未导入字幕：对白、旁白/字幕和信息释放判断需要结合画面人工核对。')
   }
@@ -228,14 +199,6 @@ function renderRevisionChecklist(
       ),
     )
   }
-  if (noSourceSegments.length) {
-    checklist.push(
-      ...noSourceSegments.map(({ segment, index }) =>
-        `- 第 ${index + 1} 段未匹配资料场景：${segment.title || segment.type}`,
-      ),
-    )
-  }
-
   return [
     '## 人工校对清单',
     '',
@@ -251,7 +214,6 @@ function renderScreenplayOutline(segment: Segment, index: number): string[] {
     `- 剧情线：${storyLineLabelForSegment(segment)}`,
     `- 段落作用：${segmentStructuralRole(segment)}`,
     ...renderSharedModuleExport(segment),
-    `- 对应资料场景：${formatSceneIds(segment.screenplaySceneIds) || '待确认'}`,
     `- 剧本还原：${inlineText(segment.screenplayDraft)}`,
     `- 小节密度：${formatBlockStats(segment)}`,
     `- 观众体验：${inlineText(segment.audienceExperience)}`,
@@ -409,7 +371,7 @@ function renderScreenplayBody(segment: Segment, index: number): string[] {
   return [
     `### ${String(index + 1).padStart(2, '0')}｜${segment.title || segment.type}`,
     '',
-    `> ${secondsToTimecode(segment.startTime)} - ${secondsToTimecode(segment.endTime)}｜${segment.type}${segment.screenplaySceneIds?.length ? `｜资料场景 ${formatSceneIds(segment.screenplaySceneIds)}` : ''}`,
+    `> ${secondsToTimecode(segment.startTime)} - ${secondsToTimecode(segment.endTime)}｜${segment.type}`,
     '',
     ...(blocks.length
       ? blocks.flatMap((block) => renderScreenplayBlock(block))
@@ -434,9 +396,7 @@ function renderSegment(frames: Frame[], subtitles: Subtitle[], segment: Segment)
     `- 完成度：${progress.percent}%（${progress.completed}/${progress.total}）`,
     `- 待补字段：${progress.missing.length ? progress.missing.join('、') : '无'}`,
     `- 置信度：${typeof segment.confidence === 'number' ? `${Math.round(segment.confidence * 100)}%` : '待确认'}`,
-    `- 对应资料场景：${formatSceneIds(segment.screenplaySceneIds) || '待确认'}`,
     `- 小节密度：${formatBlockStats(segment, blockStats)}`,
-    segment.screenplaySceneNote ? `- 资料场景备注：${segment.screenplaySceneNote}` : '',
     '',
     '#### 代表帧',
     ...(representative.length
@@ -626,9 +586,6 @@ function escapeCell(value?: string): string {
   return (value?.trim() || '').replace(/\|/g, '/').replace(/\n/g, '<br />')
 }
 
-function formatSceneIds(values?: number[]): string {
-  return values?.length ? values.join('、') : ''
-}
 
 function renderFrameReference(frame: Frame): string[] {
   const filename = `frames/${frameFileName(frame)}`

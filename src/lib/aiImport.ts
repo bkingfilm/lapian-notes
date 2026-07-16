@@ -375,8 +375,6 @@ function normalizeSegment(project: Project, segment: ImportedSegment): Segment |
     keyBeats: stringOr(segment.keyBeats),
     screenplayDraft: stringOr(segment.screenplayDraft),
     screenplayBlocks: normalizeScreenplayBlocks(project, segment.screenplayBlocks),
-    screenplaySceneIds: normalizeSceneIds(segment.screenplaySceneIds),
-    screenplaySceneNote: stringOr(segment.screenplaySceneNote),
     creativeIntent: stringOr(segment.creativeIntent),
     informationControl: stringOr(segment.informationControl),
     rhythmDesign: stringOr(segment.rhythmDesign),
@@ -419,14 +417,6 @@ function normalizeScreenplayBlockType(value: unknown): NonNullable<Segment['scre
   if (value === '手语/字幕') return '旁白/字幕'
   if (value === '场景' || value === '动作' || value === '对白' || value === '旁白/字幕' || value === '备注') return value
   return '动作'
-}
-
-function normalizeSceneIds(value: unknown): number[] | undefined {
-  if (!Array.isArray(value)) return undefined
-  const ids = [...new Set(value.map((item) => Number(item)).filter((item) => Number.isFinite(item) && item > 0))]
-    .map((item) => Math.round(item))
-    .sort((a, b) => a - b)
-  return ids.length ? ids : undefined
 }
 
 function normalizeAudienceCurvePoints(points: ImportedAudienceCurvePoint[], duration: number): AudienceCurvePoint[] {

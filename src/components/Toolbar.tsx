@@ -9,7 +9,6 @@ interface ToolbarProps {
   onSaveProjectPackage: () => void
   onVideoPath: () => void
   onSubtitle: () => void
-  onScreenplayResearch: () => void
   onDetectShots: () => void
   onGenerateAiPackage: () => void
   onImportAiResult: () => void
@@ -43,10 +42,6 @@ export function Toolbar(props: ToolbarProps) {
           </button>
           <button title="选填:没有会自动搜索网络字幕,搜不到也能纯画面分析" onClick={props.onSubtitle}>
             {props.project.subtitlePath ? '更换字幕' : '导入字幕'}
-            <small className="optional-tag">选填</small>
-          </button>
-          <button title="选填:公开剧本、剧情梗概或影评,能让 AI 分析更准" onClick={props.onScreenplayResearch}>
-            {props.project.screenplayResearch ? '更换剧情资料' : '导入剧情资料'}
             <small className="optional-tag">选填</small>
           </button>
           <button

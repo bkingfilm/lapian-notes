@@ -98,7 +98,6 @@ export default function App() {
   const pkgInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const subtitleInputRef = useRef<HTMLInputElement>(null)
-  const screenplayResearchInputRef = useRef<HTMLInputElement>(null)
   const aiResultInputRef = useRef<HTMLInputElement>(null)
 
   const selectedFrame: Frame | undefined = useMemo(() => {
@@ -922,24 +921,6 @@ export default function App() {
     e.target.value = ''
   }
 
-  async function handleScreenplayResearchImport(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      const text = await file.text()
-      if (!text.trim()) throw new Error('文件内容为空。')
-      setProject({
-        ...project,
-        screenplayResearch: text,
-        updatedAt: new Date().toISOString(),
-      })
-      setStatus(`已导入剧本/剧情资料：${file.name}。点击“生成 AI 分析包”后会一起打包给 AI。`)
-    } catch (error) {
-      setStatus(`导入剧本/剧情资料失败：${error instanceof Error ? error.message : String(error)}`)
-    }
-    e.target.value = ''
-  }
-
   async function readSubtitleFile(file: File): Promise<string> {
     const buffer = await file.arrayBuffer()
     const utf8Text = new TextDecoder('utf-8').decode(buffer)
@@ -1420,13 +1401,6 @@ export default function App() {
         onChange={handleSubtitleImport}
       />
       <input
-        ref={screenplayResearchInputRef}
-        className="hidden-input"
-        type="file"
-        accept=".txt,.md,text/plain,text/markdown"
-        onChange={handleScreenplayResearchImport}
-      />
-      <input
         ref={relinkInputRef}
         className="hidden-input"
         type="file"
@@ -1449,7 +1423,6 @@ export default function App() {
         onSaveProjectPackage={handleSaveProjectPackage}
         onVideoPath={() => void openVideoPicker()}
         onSubtitle={() => subtitleInputRef.current?.click()}
-        onScreenplayResearch={() => screenplayResearchInputRef.current?.click()}
         onDetectShots={() => void handleDetectShots()}
         onGenerateAiPackage={handleGenerateAiPackage}
         onImportAiResult={() => aiResultInputRef.current?.click()}
