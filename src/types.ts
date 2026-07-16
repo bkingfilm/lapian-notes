@@ -15,10 +15,17 @@
   audienceCurvePoints?: AudienceCurvePoint[]
   learningGoal?: string
   screenplayResearch?: string
+  shotDetection?: ShotDetection
   aiSummary?: string
   createdAt: string
   updatedAt: string
   schemaVersion: string
+}
+
+export interface ShotDetection {
+  cuts: number[]
+  sampleStep: number
+  analyzedAt: string
 }
 
 export interface StoryLine {

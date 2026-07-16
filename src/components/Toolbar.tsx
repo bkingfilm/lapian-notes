@@ -4,11 +4,13 @@ import { hasMeaningfulProjectContent } from '../lib/project'
 interface ToolbarProps {
   project: Project
   isTaskRunning: boolean
+  isShotDetecting: boolean
   onOpenLibrary: () => void
   onSaveProjectPackage: () => void
   onVideoPath: () => void
   onSubtitle: () => void
   onScreenplayResearch: () => void
+  onDetectShots: () => void
   onGenerateAiPackage: () => void
   onImportAiResult: () => void
   onExportMarkdown: () => void
@@ -46,6 +48,14 @@ export function Toolbar(props: ToolbarProps) {
           <button title="选填:公开剧本、剧情梗概或影评,能让 AI 分析更准" onClick={props.onScreenplayResearch}>
             {props.project.screenplayResearch ? '更换剧情资料' : '导入剧情资料'}
             <small className="optional-tag">选填</small>
+          </button>
+          <button
+            disabled={!props.project.sourceVideoName || props.isTaskRunning}
+            title="选填:静音加速播放整部影片,自动数出镜头切换点,生成镜头节奏带和每段平均镜头长(ASL)。片长越长耗时越久,期间可以继续做别的"
+            onClick={props.onDetectShots}
+          >
+            {props.isShotDetecting ? '检测中,点击取消' : props.project.shotDetection ? '重新检测镜头' : '检测镜头节奏'}
+            {props.isShotDetecting ? null : <small className="optional-tag">选填</small>}
           </button>
         </div>
 

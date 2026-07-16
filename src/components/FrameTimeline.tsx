@@ -1,8 +1,10 @@
-import { useLayoutEffect, useRef, useState } from 'react'
-import type { AudienceCurvePoint, Frame, MacroAnalysis, Segment, StoryLine, Subtitle } from '../types'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { AudienceCurvePoint, Frame, MacroAnalysis, Segment, ShotDetection, StoryLine, Subtitle } from '../types'
+import { getDialogueDensity, maxDensity } from '../lib/dialogueDensity'
 import { getMacroProgress } from '../lib/macroProgress'
 import { getSegmentCoverage } from '../lib/segmentCoverage'
 import { getSegmentProgress } from '../lib/segmentProgress'
+import { formatShotSeconds, getCutDensity, getShotStats } from '../lib/shotStats'
 import { AUDIENCE_LINE_ID, lineColor, normalizeLineId } from '../lib/storyLines'
 import { buildStoryStructure, segmentStorySummary, segmentStructuralRole } from '../lib/storyStructure'
 import { secondsToTimecode } from '../lib/timecode'
@@ -60,6 +62,7 @@ interface FrameTimelineProps {
   storyLines: StoryLine[]
   macroAnalysis?: MacroAnalysis
   audienceCurvePoints?: AudienceCurvePoint[]
+  shotDetection?: ShotDetection
   extractProgress: ExtractProgress | null
   extractError?: string
   extractPhase?: ExtractPhase
@@ -110,7 +113,8 @@ export function FrameTimeline(props: FrameTimelineProps) {
     ? Math.round((macroProgress.percent + averageSegmentProgress) / 2)
     : macroProgress.percent
   const unfinishedSegments = segmentProgressList.filter((progress) => progress.percent < 100).length
-  const timelineStatsText = `片长 ${secondsToTimecode(timelineDuration)}｜时间点 ${props.frames.length}｜段落 ${props.segments.length}｜覆盖 ${coverage.percent}%｜文本完成度 ${overallAnalysisProgress}%`
+  const shotStats = props.shotDetection ? getShotStats(props.shotDetection.cuts, timelineDuration) : null
+  const timelineStatsText = `片长 ${secondsToTimecode(timelineDuration)}｜时间点 ${props.frames.length}｜段落 ${props.segments.length}｜覆盖 ${coverage.percent}%｜文本完成度 ${overallAnalysisProgress}%${shotStats ? `｜镜头 ${shotStats.shotCount}｜平均镜头长 ${formatShotSeconds(shotStats.averageShotSeconds)}` : ''}`
   const hasContextStatus = Boolean(
     macroProgress.percent < 100 ||
     unfinishedSegments ||
@@ -232,6 +236,7 @@ export function FrameTimeline(props: FrameTimelineProps) {
             subtitles={props.subtitles}
             storyLines={props.storyLines}
             audienceCurvePoints={props.audienceCurvePoints ?? []}
+            shotDetection={props.shotDetection}
             duration={timelineDuration}
             selectedSegmentId={props.selectedSegmentId}
             gaps={coverage.gaps}
@@ -346,6 +351,7 @@ function TimelineSwimlane({
   subtitles,
   storyLines,
   audienceCurvePoints,
+  shotDetection,
   duration,
   selectedSegmentId,
   gaps,
@@ -357,6 +363,7 @@ function TimelineSwimlane({
   subtitles: Subtitle[]
   storyLines: StoryLine[]
   audienceCurvePoints: AudienceCurvePoint[]
+  shotDetection?: ShotDetection
   duration: number
   selectedSegmentId?: string
   gaps: Array<{ startTime: number; endTime: number }>
@@ -379,6 +386,15 @@ function TimelineSwimlane({
   const cards = segments.map((segment) => normalizeStoryCard(segment, subtitles, storyLines))
   const visibleAudienceCurvePoints = audienceCurvePoints
   const structureBands = buildStructureBands(timelineDuration)
+  const shotStats = useMemo(
+    () => (shotDetection ? getShotStats(shotDetection.cuts, timelineDuration) : null),
+    [shotDetection, timelineDuration],
+  )
+  const cutDensity = useMemo(
+    () => (shotDetection ? getCutDensity(shotDetection.cuts, timelineDuration, 60) : []),
+    [shotDetection, timelineDuration],
+  )
+  const maxCutCount = cutDensity.reduce((max, bucket) => Math.max(max, bucket.cutCount), 0)
   const hoveredCard = hoveredBlockId ? cards.find((card) => card.id === hoveredBlockId) : undefined
   const highlightedLaneIds = hoveredCard ? [hoveredCard.primaryLane, ...hoveredCard.relatedLaneIds] : []
   const laneRows = storyLines.map((lane) => {
@@ -441,6 +457,15 @@ function TimelineSwimlane({
           <small>宏观结构</small>
           <b>结构段落带</b>
         </span>
+        {shotStats ? (
+          <span
+            className="swimlane-label shot-rhythm-label"
+            title={`自动检测的硬切统计,溶解等渐变转场不计入。全片 ${shotStats.shotCount} 个镜头,平均 ${formatShotSeconds(shotStats.averageShotSeconds)},最短 ${formatShotSeconds(shotStats.minShotSeconds)},最长 ${formatShotSeconds(shotStats.maxShotSeconds)}`}
+          >
+            <small>镜头节奏</small>
+            <b>{shotStats.shotCount} 镜头｜均 {formatShotSeconds(shotStats.averageShotSeconds)}</b>
+          </span>
+        ) : null}
         {laneRows.map((lane) => (
           <span
             key={lane.id}
@@ -480,6 +505,29 @@ function TimelineSwimlane({
               )
             })}
           </div>
+          {shotStats ? (
+            <div className="shot-rhythm-row" aria-label="镜头节奏带">
+              {cutDensity.map((bucket) => {
+                const left = (bucket.startTime / timelineDuration) * 100
+                const width = ((bucket.endTime - bucket.startTime) / timelineDuration) * 100
+                const heat = maxCutCount ? bucket.cutCount / maxCutCount : 0
+                const minutes = (bucket.endTime - bucket.startTime) / 60
+                const perMinute = minutes > 0 ? bucket.cutCount / minutes : 0
+                return (
+                  <span
+                    key={bucket.startTime}
+                    className="shot-rhythm-cell"
+                    style={{
+                      left: `${left}%`,
+                      width: `${Math.min(width, 100 - left)}%`,
+                      background: `rgba(79, 70, 229, ${(0.06 + heat * 0.82).toFixed(3)})`,
+                    }}
+                    title={`${formatTickTime(bucket.startTime)} 起这一分钟:切换 ${bucket.cutCount} 次${bucket.cutCount ? `,平均镜头约 ${formatShotSeconds(60 / Math.max(perMinute, 0.01))}` : ''}`}
+                  />
+                )
+              })}
+            </div>
+          ) : null}
           <div className="swimlane-body">
             {segments.length
               ? gaps.map((gap) => {
@@ -507,6 +555,7 @@ function TimelineSwimlane({
                   <EmotionCurveLane
                     points={visibleAudienceCurvePoints}
                     cards={cards}
+                    subtitles={subtitles}
                     duration={timelineDuration}
                     hoveredPointId={hoveredPointId}
                     onHoverPoint={setHoveredPointId}
@@ -766,6 +815,7 @@ function buildStructureBands(duration: number): StructureBand[] {
 function EmotionCurveLane({
   points,
   cards,
+  subtitles,
   duration,
   hoveredPointId,
   onHoverPoint,
@@ -773,6 +823,7 @@ function EmotionCurveLane({
 }: {
   points: AudienceCurvePoint[]
   cards: StoryCard[]
+  subtitles: Subtitle[]
   duration: number
   hoveredPointId: string | null
   onHoverPoint: (pointId: string | null) => void
@@ -780,11 +831,21 @@ function EmotionCurveLane({
 }) {
   const laneRef = useRef<HTMLDivElement | null>(null)
   const [laneWidth, setLaneWidth] = useState(1000)
+  // 台词密度背景是否显示,记住用户选择
+  const [showDialogueDensity, setShowDialogueDensity] = useState(() => localStorage.getItem('lapian.dialogue-density') !== 'off')
   const sorted = [...points].sort((a, b) => a.time - b.time)
   const height = 300
   const topPadding = 64
   const bottomPadding = 58
   const usable = height - topPadding - bottomPadding
+  const densityPoints = useMemo(() => getDialogueDensity(subtitles, duration), [subtitles, duration])
+  const densityPeak = maxDensity(densityPoints)
+  const hasDensity = densityPoints.length > 1 && densityPeak > 0
+
+  function toggleDialogueDensity(next: boolean) {
+    setShowDialogueDensity(next)
+    localStorage.setItem('lapian.dialogue-density', next ? 'on' : 'off')
+  }
 
   useLayoutEffect(() => {
     const element = laneRef.current
@@ -828,6 +889,34 @@ function EmotionCurveLane({
           </span>
         ))}
       </div>
+      {hasDensity && showDialogueDensity ? (
+        <svg
+          className="dialogue-density-area"
+          style={{ top: `${topPadding}px`, height: `${usable}px` }}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polygon
+            points={`0,100 ${densityPoints
+              .map((point) => `${((point.time / duration) * 100).toFixed(2)},${(100 - (point.charsPerMinute / densityPeak) * 100).toFixed(2)}`)
+              .join(' ')} 100,100`}
+          />
+        </svg>
+      ) : null}
+      {hasDensity ? (
+        <label
+          className="dialogue-density-toggle"
+          title={`按字幕统计的每分钟台词量,峰值约 ${Math.round(densityPeak)} 字/分钟。和情绪曲线对照,能看出高潮靠台词还是靠画面`}
+        >
+          <input
+            type="checkbox"
+            checked={showDialogueDensity}
+            onChange={(event) => toggleDialogueDensity(event.target.checked)}
+          />
+          <span>台词密度</span>
+        </label>
+      ) : null}
       <div className="emotion-curve-lines" aria-hidden="true">
         {curveSegments.map((segment) => (
             <span

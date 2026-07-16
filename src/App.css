@@ -3207,3 +3207,66 @@ textarea {
   }
 
 }
+
+/* 镜头节奏带:自动检测切点后的每分钟切换热力条 */
+.shot-rhythm-label {
+  height: 40px;
+  background: #eef2ff;
+}
+
+.shot-rhythm-label b {
+  font-size: 11px;
+}
+
+.shot-rhythm-row {
+  position: relative;
+  height: 40px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8faff;
+}
+
+.shot-rhythm-cell {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 2px;
+}
+
+/* 台词密度:情绪曲线底部的浅色面积图 */
+.dialogue-density-area {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.dialogue-density-area polygon {
+  fill: rgba(16, 185, 129, 0.14);
+  stroke: rgba(5, 150, 105, 0.4);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.dialogue-density-toggle {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 3;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  background: rgba(255, 255, 255, 0.88);
+  color: #047857;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dialogue-density-toggle input {
+  margin: 0;
+}

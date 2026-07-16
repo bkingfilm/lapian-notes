@@ -20,6 +20,7 @@ import { extractEmbeddedSubtitles } from './lib/videoSubtitles'
 import { buildAiChatMessage, exportAiAnalysisPackage, exportProjectPackage, exportSegmentDeepDivePackage, importProjectPackage } from './lib/framePackage'
 import { cleanSubtitles, fetchAutoSubtitle } from './lib/autoSubtitle'
 import { probeVideoPlayable, transcodeVideo } from './lib/transcode'
+import { detectShots, supportsShotDetection } from './lib/shotDetection'
 import { loadAutosave, saveAutosave, clearAutosave } from './lib/autosave'
 import { clearProjectFrameImages, restoreProjectFrameImages, saveProjectFrameImages } from './lib/frameStore'
 import { deleteLibraryProject, listLibraryProjects, loadLibraryProject, saveProjectToLibrary, type ProjectSummary } from './lib/projectStore'
@@ -69,6 +70,7 @@ export default function App() {
   const [extractPhase, setExtractPhase] = useState<ExtractPhase>('idle')
   const [extractAbort, setExtractAbort] = useState<AbortController | null>(null)
   const [analysisAbort, setAnalysisAbort] = useState<AbortController | null>(null)
+  const [shotAbort, setShotAbort] = useState<AbortController | null>(null)
   const [markdownPreview, setMarkdownPreview] = useState<string | null>(null)
   const [aiImportText, setAiImportText] = useState('')
   const [isAiImportOpen, setIsAiImportOpen] = useState(false)
@@ -140,6 +142,7 @@ export default function App() {
 
   const hasVideo = Boolean(project.sourceVideoName)
   const isTaskRunning = Boolean(extractAbort || analysisAbort)
+  const isShotDetecting = Boolean(shotAbort)
   const analysisInProgress = Boolean(analysisAbort || (extractAbort && project.frames.length > 0))
   const aiImportPreview = useMemo(() => {
     if (!aiImportText.trim()) return null
@@ -219,6 +222,7 @@ export default function App() {
   }
 
   function clearVideoFileReference() {
+    shotAbort?.abort()
     videoFileRef.current = null
     setVideoPlayerUrl((current) => {
       if (current?.startsWith('blob:')) URL.revokeObjectURL(current)
@@ -336,6 +340,49 @@ export default function App() {
         : `已关联影片:${file.name},可以播放和重新抽帧了。`,
     )
     e.target.value = ''
+  }
+
+  // 镜头切分检测:静音加速播放整部影片,逐帧差分找硬切;运行中再点一次=取消
+  async function handleDetectShots() {
+    if (shotAbort) {
+      shotAbort.abort()
+      return
+    }
+    const videoFile = videoFileRef.current
+    if (!videoFile) {
+      setStatus('还没有关联影片文件:在右侧播放器面板点「关联影片文件」选择本片,再来检测镜头节奏。')
+      return
+    }
+    if (!supportsShotDetection()) {
+      setStatus('当前浏览器不支持镜头检测,请换用较新的 Chrome / Edge。')
+      return
+    }
+    const abort = new AbortController()
+    setShotAbort(abort)
+    const projectIdAtStart = projectRef.current.id
+    let lastPercent = -1
+    try {
+      const detection = await detectShots(
+        videoFile,
+        (progress) => {
+          if (progress.percent === lastPercent) return
+          lastPercent = progress.percent
+          setStatus(`镜头检测中 ${progress.percent}%,已发现 ${progress.cutCount} 个切点。检测以静音加速播放进行,期间可以继续做别的。`)
+        },
+        abort.signal,
+      )
+      if (projectRef.current.id !== projectIdAtStart) return
+      updateProject({ shotDetection: detection })
+      setStatus(`镜头检测完成:共约 ${detection.cuts.length + 1} 个镜头。时间轴上已生成镜头节奏带,段落面板会显示每段的平均镜头长。`)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setStatus('已取消镜头检测。')
+      } else {
+        setStatus(`镜头检测失败:${error instanceof Error ? error.message : String(error)}`)
+      }
+    } finally {
+      setShotAbort(null)
+    }
   }
 
   function revokeFrameObjectUrls(frames: Frame[]) {
@@ -689,6 +736,7 @@ export default function App() {
       return
     }
 
+    shotAbort?.abort()
     const title = stripExtension(file.name)
     let nextProject: Project = {
       ...createEmptyProject(title, title),
@@ -1396,11 +1444,13 @@ export default function App() {
       <Toolbar
         project={project}
         isTaskRunning={isTaskRunning}
+        isShotDetecting={isShotDetecting}
         onOpenLibrary={handleOpenLibrary}
         onSaveProjectPackage={handleSaveProjectPackage}
         onVideoPath={() => void openVideoPicker()}
         onSubtitle={() => subtitleInputRef.current?.click()}
         onScreenplayResearch={() => screenplayResearchInputRef.current?.click()}
+        onDetectShots={() => void handleDetectShots()}
         onGenerateAiPackage={handleGenerateAiPackage}
         onImportAiResult={() => aiResultInputRef.current?.click()}
         onExportMarkdown={handleExportMarkdown}
@@ -1455,6 +1505,7 @@ export default function App() {
             storyLines={getProjectStoryLines(project)}
             macroAnalysis={project.macroAnalysis}
             audienceCurvePoints={project.audienceCurvePoints ?? []}
+            shotDetection={project.shotDetection}
             extractProgress={extractProgress}
             extractError={extractError}
             extractPhase={extractPhase}

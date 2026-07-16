@@ -1,4 +1,4 @@
-﻿import type { Frame, MacroAnalysis, Project, Segment, SegmentType } from '../types'
+﻿import type { Frame, MacroAnalysis, Project, Segment, SegmentType, ShotDetection } from '../types'
 import type { AiWriteMode } from '../types'
 
 export const segmentColors: Record<SegmentType, string> = {
@@ -82,9 +82,22 @@ export function normalizeLoadedProject(value: unknown): Project {
       endFrameId: frameIds.has(segment.endFrameId) ? segment.endFrameId : frames.at(-1)?.id ?? segment.endFrameId,
     })),
     storyLines: Array.isArray(raw.storyLines) ? raw.storyLines : undefined,
+    shotDetection: normalizeShotDetection(raw.shotDetection),
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : base.createdAt,
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : base.updatedAt,
     schemaVersion: typeof raw.schemaVersion === 'string' ? raw.schemaVersion : base.schemaVersion,
+  }
+}
+
+function normalizeShotDetection(value: unknown): ShotDetection | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const raw = value as Partial<ShotDetection>
+  if (!Array.isArray(raw.cuts)) return undefined
+  const cuts = raw.cuts.filter((cut): cut is number => typeof cut === 'number' && Number.isFinite(cut) && cut >= 0).sort((a, b) => a - b)
+  return {
+    cuts,
+    sampleStep: typeof raw.sampleStep === 'number' && raw.sampleStep > 0 ? raw.sampleStep : 0.3,
+    analyzedAt: typeof raw.analyzedAt === 'string' ? raw.analyzedAt : new Date().toISOString(),
   }
 }
 
