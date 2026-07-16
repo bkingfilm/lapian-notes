@@ -3237,3 +3237,107 @@ textarea {
 .extract-stalled button:hover {
   background: #2159bd;
 }
+
+/* 流程向导收起/展开 */
+.workflow-guide {
+  position: relative;
+}
+
+.workflow-collapse-button {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  z-index: 2;
+  padding: 2px 10px;
+  border: 1px solid #d9dde3;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #667085;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.workflow-collapse-button:hover {
+  color: #2d6cdf;
+  border-color: #2d6cdf;
+}
+
+.workflow-guide-bar {
+  border-bottom: 1px solid #e5e7eb;
+  background: #fbfcfe;
+}
+
+.workflow-bar-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.workflow-bar-title {
+  color: #536071;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.workflow-bar-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.workflow-bar-step b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.workflow-bar-step.done {
+  color: #16803c;
+}
+
+.workflow-bar-step.done b {
+  background: #d9f2e3;
+  color: #16803c;
+}
+
+.workflow-bar-step.current {
+  color: #2d6cdf;
+  font-weight: 700;
+}
+
+.workflow-bar-step.current b {
+  background: #dbe7fd;
+  color: #2d6cdf;
+}
+
+.workflow-bar-expand {
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 1px solid #d9dde3;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #667085;
+  font-size: 11px;
+}
+
+.workflow-bar-main:hover .workflow-bar-expand {
+  color: #2d6cdf;
+  border-color: #2d6cdf;
+}

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Project } from '../types'
 
@@ -23,6 +24,17 @@ interface Step {
 export function WorkflowGuide(props: WorkflowGuideProps) {
   const hasFrames = props.project.frames.length > 0
   const hasSegments = props.project.segments.length > 0
+  // 收起状态记住用户选择;没手动设过时,项目已出段落(流程基本走完)就默认收起
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    const saved = localStorage.getItem('lapian.workflow-collapsed')
+    if (saved !== null) return saved === '1'
+    return props.project.segments.length > 0
+  })
+
+  function toggleCollapsed(next: boolean) {
+    setCollapsed(next)
+    localStorage.setItem('lapian.workflow-collapsed', next ? '1' : '0')
+  }
 
   const steps: Step[] = [
     {
@@ -72,8 +84,28 @@ export function WorkflowGuide(props: WorkflowGuideProps) {
     },
   ]
 
+  if (collapsed) {
+    return (
+      <nav className="workflow-guide-bar" aria-label="使用流程">
+        <button type="button" className="workflow-bar-main" onClick={() => toggleCollapsed(false)} title="展开查看四步流程说明">
+          <span className="workflow-bar-title">使用流程</span>
+          {steps.map((step) => (
+            <span key={step.index} className={`workflow-bar-step ${step.state}`}>
+              <b>{step.state === 'done' ? '✓' : step.index}</b>
+              {step.title}
+            </span>
+          ))}
+          <span className="workflow-bar-expand">展开</span>
+        </button>
+      </nav>
+    )
+  }
+
   return (
     <nav className={`workflow-guide ${hasSegments ? 'compact' : ''}`} aria-label="使用流程">
+      <button type="button" className="workflow-collapse-button" onClick={() => toggleCollapsed(true)} title="收起流程说明,只留一行">
+        收起
+      </button>
       {steps.map((step) => (
         <div key={step.index} className={`workflow-step ${step.state}`}>
           <span className="workflow-step-number">{step.state === 'done' ? '✓' : step.index}</span>
