@@ -30,7 +30,8 @@ export async function extractVideoFrames(
     if (!duration) throw new Error('无法读取视频时长')
 
     const canvas = document.createElement('canvas')
-    const width = Math.min(video.videoWidth || 480, 480)
+    // 320 宽足够 AI 认场景和构图,也够时间轴缩略图用;再大只是白占空间和上传流量
+    const width = Math.min(video.videoWidth || 320, 320)
     const height = Math.round(width / ((video.videoWidth || 16) / (video.videoHeight || 9)))
     canvas.width = width
     canvas.height = height
@@ -68,7 +69,7 @@ function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('无法生成截图'))),
       'image/jpeg',
-      0.72,
+      0.62,
     )
   })
 }
