@@ -25,6 +25,8 @@ Everything runs locally. Your film and notes never leave your machine. Bring you
 
 <img src="docs/player-panel.png" alt="Player sync panel" width="380">
 
+> **Note: free-tier AI may "cut corners".** A film sampled at one frame per second yields 6000 to 8000 images, often beyond free quotas. Instead of saying so, the AI may silently look at only a few frames from the beginning, middle and end, returning a suspiciously thin analysis. If that happens, ask it to "fully extract the ZIP and analyze every segment per prompt.md, no sampling", or retry with a paid tier or another AI.
+
 ## Quick start
 
 Requires Node.js 20.19+ / 22.12+ (the one-click launchers handle this automatically) and a Chromium browser. [ffmpeg](https://ffmpeg.org/) is optional (enables auto-transcoding of RMVB/AVI/HEVC).
