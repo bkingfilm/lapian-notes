@@ -365,7 +365,7 @@ function SegmentInspector({
         <label className="field compact">
           <span>主归属线</span>
           <select value={primaryLine} onChange={(event) => updatePrimaryLine(event.target.value)}>
-            {storyLines.map((line) => <option key={line.id} value={line.id}>{line.title}</option>)}
+            {storyLines.map((line) => <option key={line.id} value={line.id} data-i18n-ignore>{line.title}</option>)}
           </select>
         </label>
         <div className="field">
@@ -379,7 +379,7 @@ function SegmentInspector({
                   disabled={line.id === primaryLine}
                   onChange={(event) => updateSharedLine(line.id, event.target.checked)}
                 />
-                <span>{line.title}</span>
+                <span data-i18n-ignore>{line.title}</span>
               </label>
             ))}
           </div>
@@ -561,7 +561,7 @@ function SubtitlePreview({ subtitles, onSeekTo }: { subtitles: Subtitle[]; onSee
           {subtitles.map((subtitle) => (
             <li key={subtitle.id}>
               <button type="button" className="seek-button" onClick={() => onSeekTo(subtitle.startTime)}>▶ {secondsToTimecode(subtitle.startTime)}</button>
-              <p>{subtitle.text}</p>
+              <p data-i18n-ignore>{subtitle.text}</p>
             </li>
           ))}
         </ol>

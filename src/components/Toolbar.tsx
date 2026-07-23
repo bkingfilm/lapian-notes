@@ -25,7 +25,11 @@ export function Toolbar(props: ToolbarProps) {
     <header className="toolbar">
       <div className="brand">
         <strong>拉片笔记</strong>
-        <span>{props.project.projectTitle || '未命名项目'}</span>
+        {props.project.projectTitle ? (
+          <span data-i18n-ignore>{props.project.projectTitle}</span>
+        ) : (
+          <span>{'未命名项目'}</span>
+        )}
         <button type="button" className="guide-button" onClick={props.onOpenGuide}>? 新手怎么拉片</button>
       </div>
       <div className="tool-groups">

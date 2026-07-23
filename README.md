@@ -9,7 +9,7 @@
 
 为想系统学习电影叙事的创作者设计。全程本地运行，影片和笔记数据不上传任何服务器。
 
-> **English**: [Full English README →](README.en.md) Lapian Notes turns a film into an editable shot-by-shot study notebook — local frame extraction, AI-assisted structure analysis (bring your own AI, no API key), story-line swimlanes, structure tree and audience-emotion curve. UI is currently Chinese-only; everything runs locally.
+> **English**: [Full English README →](README.en.md) Lapian Notes turns a film into an editable shot-by-shot study notebook — local frame extraction, AI-assisted structure analysis (bring your own AI, no API key), story-line swimlanes, structure tree and audience-emotion curve. The interface supports English (switcher in the bottom-right corner); everything runs locally.
 
 > **下载解压后：Windows 双击 `run.bat`，苹果电脑双击 `run.command`**，等它自动装好，浏览器会自己打开工具。
 

@@ -9,7 +9,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node scripts/run-tests.mjs",
+    "audit:i18n": "node scripts/audit-i18n.mjs",
+    "check": "npm run test && npm run audit:i18n && npm run lint && npm run build"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

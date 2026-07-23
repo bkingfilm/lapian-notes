@@ -278,7 +278,11 @@ export function FrameTimeline(props: FrameTimelineProps) {
               {macroProgress.percent < 100 ? <span className="context-warn">全片分析待补</span> : null}
               {unfinishedSegments ? <span className="context-warn">待补段落 {unfinishedSegments}</span> : null}
               {coverage.gaps.length ? <span className="context-warn">缺口 {coverage.gaps.length}</span> : null}
-              {selectedSegment ? <strong>当前段落：{selectedSegment.type} · {selectedSegment.title}</strong> : null}
+              {selectedSegment ? (
+                <strong>
+                  当前段落：{selectedSegment.type} · <span data-i18n-ignore>{selectedSegment.title}</span>
+                </strong>
+              ) : null}
               {selectedFrame ? <strong>当前时间点：{secondsToTimecode(selectedFrame.time)}</strong> : null}
               {selectedRangeText ? <strong>选择范围：{selectedRangeText}</strong> : null}
             </div>
@@ -370,7 +374,11 @@ export function FrameTimeline(props: FrameTimelineProps) {
                                 >
                                   <span className="structure-segment-text">
                                     <time>{secondsToTimecode(segment.startTime)}</time>
-                                    <strong>{segment.title || segment.type}</strong>
+                                    {segment.title ? (
+                                      <strong data-i18n-ignore>{segment.title}</strong>
+                                    ) : (
+                                      <strong>{segment.type}</strong>
+                                    )}
                                     <span className="structure-segment-story">
                                       <b>故事</b>
                                       <span>{segmentStorySummary(segment, props.subtitles)}</span>
@@ -623,16 +631,17 @@ function TimelineSwimlane({
                         card.relatedLaneIds.length ? `关联线：${card.relatedLaneIds.map((id) => lineLabel(id, storyLines)).join(' / ')}` : '',
                       ].filter(Boolean).join('｜')}
                     >
-                      <strong>{card.title}</strong>
+                      <strong data-i18n-ignore>{card.title}</strong>
                       <time>{card.time} - {card.endTime}</time>
-                      <span>主功能：{card.function}</span>
-                      {card.pressure || card.conflict ? <small>压力：{card.pressure || card.conflict}</small> : null}
-                      {card.audienceEmotion ? <small>观众：{card.audienceEmotion}</small> : null}
+                      <span>主功能：<span data-i18n-ignore>{card.function}</span></span>
+                      {card.pressure || card.conflict ? <small>压力：<span data-i18n-ignore>{card.pressure || card.conflict}</span></small> : null}
+                      {card.audienceEmotion ? <small>观众：<span data-i18n-ignore>{card.audienceEmotion}</span></small> : null}
                       <span className="story-tags">
                         {card.isSetup ? <b>铺垫</b> : null}
                         {card.isKeyTurn ? <b>转折</b> : null}
                         {card.isClimax ? <b>高潮</b> : null}
                         {card.isPayoff ? <b>回收</b> : null}
+                        {/* tags 是 type/narrativeOrder 受控枚举值,不是用户文字,放开翻译 */}
                         {card.tags.slice(0, 2).map((tag) => <b key={tag}>{tag}</b>)}
                       </span>
                       {card.relatedLaneIds.length ? (
@@ -687,7 +696,7 @@ function TimelineSwimlane({
                       <em>引用</em>
                       <strong>{reference.title}</strong>
                       <time>{reference.time}</time>
-                      <span>作用：{reference.referenceReason}</span>
+                      <span>作用：<span>{reference.referenceReason}</span></span>
                     </button>
                   )
                 })}
@@ -976,7 +985,7 @@ function EmotionCurveLane({
             ].filter(Boolean).join('\n')}
           >
             <span />
-            <b>{shortLabel(point.title)}</b>
+            <b data-i18n-ignore>{shortLabel(point.title)}</b>
           </button>
         )
       })}

@@ -1,4 +1,6 @@
 import type { Frame, Project } from '../types'
+import type { Locale } from '../i18n/core'
+import { translateText } from '../i18n/translate'
 import { buildAiPrompt, buildSrtFromSubtitles, isDataImage, safeName } from './framePackage'
 import type { FileSaveResult, LooseSheetInfo } from './framePackage'
 import { secondsToTimecode } from './timecode'
@@ -31,36 +33,38 @@ export interface DomesticPackageResult {
   tileIntervalSeconds: number
 }
 
-export async function exportDomesticAiPackage(project: Project): Promise<DomesticPackageResult> {
+export async function exportDomesticAiPackage(project: Project, locale: Locale = 'zh-CN'): Promise<DomesticPackageResult> {
   const exportableFrames = project.frames.filter((frame) => isDataImage(frame.src))
-  if (!exportableFrames.length) throw new Error('没有可导出的抽帧图片，请先导入电影并完成抽帧。')
+  if (!exportableFrames.length) throw new Error(translateText('没有可导出的抽帧图片，请先导入电影并完成抽帧。', locale))
 
   const { sheets, tileIntervalSeconds } = await buildContactSheets(exportableFrames, project.duration)
   const sheetInfo: LooseSheetInfo = { sheetCount: sheets.length, tileIntervalSeconds }
 
   const files: LooseFile[] = [
-    { name: PROMPT_FILE_NAME, blob: new Blob([buildAiPrompt(project, sheetInfo)], { type: 'text/plain' }) },
+    { name: translateText(PROMPT_FILE_NAME, locale), blob: new Blob([buildAiPrompt(project, locale, sheetInfo)], { type: 'text/plain' }) },
     ...(project.subtitles.length
-      ? [{ name: SUBTITLE_FILE_NAME, blob: new Blob([buildSrtFromSubtitles(project.subtitles)], { type: 'text/plain' }) }]
+      ? [{ name: translateText(SUBTITLE_FILE_NAME, locale), blob: new Blob([buildSrtFromSubtitles(project.subtitles)], { type: 'text/plain' }) }]
       : []),
     ...sheets.map((blob, index) => ({
-      name: `画面速览-${String(index + 1).padStart(2, '0')}.jpg`,
+      name: `${translateText('画面速览', locale)}-${String(index + 1).padStart(2, '0')}.jpg`,
       blob,
     })),
   ]
 
-  const folderName = safeName(project.projectTitle || project.filmTitle || '拉片项目') + '-AI分析材料'
+  const fallbackName = translateText('拉片项目', locale)
+  const folderName = safeName(project.projectTitle || project.filmTitle || fallbackName, fallbackName) + '-' + translateText('AI分析材料', locale)
   const result = await saveLooseFiles(folderName, files)
   return { result, fileCount: files.length, sheetCount: sheets.length, tileIntervalSeconds }
 }
 
 // 上传散文件给 AI 时配的开场白,对应 buildAiChatMessage 的免压缩包版
-export function buildDomesticAiChatMessage(hasSubtitles: boolean): string {
-  return [
-    '请按「1-任务说明.txt」的要求分析这部电影：画面速览拼图每格左上角是该画面的时间码',
-    hasSubtitles ? '，「2-字幕.txt」是全片字幕' : '',
-    '。最终只输出符合任务说明末尾结构示例的 JSON，不要输出 JSON 之外的内容。',
-  ].join('')
+export function buildDomesticAiChatMessage(hasSubtitles: boolean, locale: Locale = 'zh-CN'): string {
+  return translateText(
+    hasSubtitles
+      ? '请按「1-任务说明.txt」的要求分析这部电影：画面速览拼图每格左上角是该画面的时间码，「2-字幕.txt」是全片字幕。最终只输出符合任务说明末尾结构示例的 JSON，不要输出 JSON 之外的内容。'
+      : '请按「1-任务说明.txt」的要求分析这部电影：画面速览拼图每格左上角是该画面的时间码。最终只输出符合任务说明末尾结构示例的 JSON，不要输出 JSON 之外的内容。',
+    locale,
+  )
 }
 
 async function buildContactSheets(

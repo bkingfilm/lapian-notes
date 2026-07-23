@@ -9,7 +9,7 @@ Turn a film into an editable shot-by-shot study notebook ("拉片" — the Chine
 
 Everything runs locally. Your film and notes never leave your machine. Bring your own AI — no API key required.
 
-> **Note**: the UI is currently Chinese-only. [中文说明 →](README.md)
+> **Note**: the interface supports English and Simplified Chinese; use the language switcher in the bottom-right corner. [中文说明 →](README.md)
 
 ![Screenshot: story-line swimlanes, audience-emotion curve, structure tree](docs/screenshot.jpg)
 
@@ -25,7 +25,7 @@ Everything runs locally. Your film and notes never leave your machine. Bring you
 
 <img src="docs/player-panel.png" alt="Player sync panel" width="380">
 
-> **Using an AI that rejects ZIP uploads (common with Chinese models like Kimi / Doubao / Qwen / DeepSeek)?** Click the "国内 AI 免压缩包版" (no-ZIP) button next to the package button: it exports plain files instead — a task brief, subtitles and timecoded contact-sheet images — which you upload directly. Everything else works the same.
+> **Using an AI that rejects ZIP uploads (common with Chinese models like Kimi / Doubao / Qwen / DeepSeek)?** Click the "No-ZIP export (CN AI apps)" button next to the package button: it exports plain files instead — a task brief, subtitles and timecoded contact-sheet images — which you upload directly. Everything else works the same.
 
 > **Note: free-tier AI may "cut corners".** A film sampled at one frame per second yields 6000 to 8000 images, often beyond free quotas. Instead of saying so, the AI may silently look at only a few frames from the beginning, middle and end, returning a suspiciously thin analysis. If that happens, ask it to "fully extract the ZIP and analyze every segment per prompt.md, no sampling", or retry with a paid tier or another AI.
 
@@ -44,7 +44,7 @@ Note for international users: the automatic subtitle search targets a Chinese su
 
 ## Data
 
-Notes autosave to localStorage, frame images to IndexedDB — all local. "备份 ZIP" (Backup ZIP) exports a self-contained archive (notes + frames + Markdown) for backup, sharing or moving machines.
+Notes autosave to localStorage, frame images to IndexedDB — all local. The "Backup ZIP" button exports a self-contained archive (notes + frames + Markdown) for backup, sharing or moving machines.
 
 ## License
 
