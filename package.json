@@ -2,14 +2,15 @@
   "name": "lapian-notes",
   "private": true,
   "version": "0.3.1",
-  "description": "AI 辅助的电影拉片工具：导入影片自动抽帧配字幕，AI 拆出剧情泳道时间轴、结构树、观众情绪曲线，边播边写你的拉片笔记。",
+  "description": "Local-first film breakdown workspace with English and Simplified Chinese interface support.",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/i18n/core.test.ts"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

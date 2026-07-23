@@ -1,0 +1,43 @@
+.language-switcher {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.65rem;
+  background: rgba(20, 24, 33, 0.92);
+  color: #f6f7fb;
+  box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(10px);
+  font-size: 0.78rem;
+}
+
+.language-switcher select {
+  max-width: 10rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.45rem;
+  background: #11151e;
+  color: inherit;
+  padding: 0.25rem 0.4rem;
+  font: inherit;
+}
+
+@media (max-width: 720px) {
+  .language-switcher {
+    top: 0.45rem;
+    right: 0.45rem;
+  }
+
+  .language-switcher label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
