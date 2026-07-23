@@ -867,4 +867,7 @@ export const englishCatalog = {
   "段落深拆": "segment deep dive",
   "项目文件缺少 project.json。": "Project package is missing project.json.",
   "当前仅支持未压缩 ZIP，请使用本工具导出的文件。": "Only uncompressed ZIP archives are supported. Use a file exported by this tool.",
+  "结构图": "structure map",
+  "完整拉片长图": "complete breakdown image",
+  "剧本正文": "screenplay text",
 } as const satisfies Readonly<Record<string, string>>

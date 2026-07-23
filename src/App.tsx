@@ -26,6 +26,7 @@ import { deleteLibraryProject, listLibraryProjects, loadLibraryProject, saveProj
 import { getProjectStoryLines } from './lib/storyLines'
 import { secondsToTimecode } from './lib/timecode'
 import { exportMarkdown, exportScreenplayText } from './lib/markdown'
+import { useI18n } from './i18n/context'
 import {
   VIDEO_PICKER_TYPES,
   deleteVideoHandle,
@@ -57,6 +58,7 @@ const INITIAL_AUTOSAVE = loadAutosave()
 const INITIAL_PROJECT = INITIAL_AUTOSAVE?.project ?? null
 
 export default function App() {
+  const { locale, t } = useI18n()
   const [project, setProject] = useState<Project>(
     () => INITIAL_PROJECT ?? createEmptyProject(),
   )
@@ -467,7 +469,7 @@ export default function App() {
         if (!rebuilt) return
         sourceProject = rebuilt
       }
-      const saved = await exportAiAnalysisPackage(sourceProject)
+      const saved = await exportAiAnalysisPackage(sourceProject, locale)
       await announceAiPackageResult(saved, sourceProject.subtitles.length === 0)
     } catch (error) {
       setStatus(`生成 AI 分析包失败：${error instanceof Error ? error.message : String(error)}`)
@@ -510,7 +512,7 @@ export default function App() {
       return
     }
     try {
-      const imported = await importProjectPackage(file)
+      const imported = await importProjectPackage(file, locale)
       setSelection({ kind: 'none' })
       resetSelection()
       setIsAiImportOpen(false)
@@ -532,7 +534,7 @@ export default function App() {
 
   async function handleSaveProjectPackage() {
     try {
-      const saved = await exportProjectPackage(project)
+      const saved = await exportProjectPackage(project, locale)
       const imageCount = project.frames.filter((frame) => frame.src).length
       const contentText = imageCount
         ? `包含 project.json、analysis.md 和 ${imageCount} 张截图`
@@ -875,7 +877,7 @@ export default function App() {
       }
     }
     try {
-      const saved = await exportAiAnalysisPackage(working)
+      const saved = await exportAiAnalysisPackage(working, locale)
       await announceAiPackageResult(saved, working.subtitles.length === 0, subtitleMissNote)
     } catch (error) {
       setStatus(`自动生成 AI 分析包失败：${error instanceof Error ? error.message : String(error)}。可手动点“生成 AI 分析包”重试。`)
@@ -883,7 +885,7 @@ export default function App() {
   }
 
   async function announceAiPackageResult(saved: 'saved' | 'downloaded', withoutSubtitles = false, extraNote = '') {
-    const copied = await navigator.clipboard.writeText(buildAiChatMessage()).then(() => true, () => false)
+    const copied = await navigator.clipboard.writeText(buildAiChatMessage(locale)).then(() => true, () => false)
     const copyHint = copied
       ? '发给 AI 的指令已复制到剪贴板：先粘贴指令，再上传 ZIP（AI 不会自动读包里的任务说明）。'
       : '上传 ZIP 时请附一句：“解压后严格按包内 prompt.md 分析，只返回 schema.json 结构的 JSON。”'
@@ -1136,7 +1138,7 @@ export default function App() {
       ])
       const link = document.createElement('a')
       link.href = dataUrl
-      link.download = `${project.projectTitle || DEFAULT_PROJECT_TITLE}-${mode === 'structure' ? '结构图' : '完整拉片长图'}.png`
+      link.download = `${project.projectTitle || t(DEFAULT_PROJECT_TITLE)}-${mode === 'structure' ? t('结构图') : t('完整拉片长图')}.png`
       link.click()
       setStatus(withStarHint(mode === 'structure' ? '结构图已生成(泳道+情绪曲线),适合直接发社交平台。' : '完整拉片长图已生成,适合存档或给人细读。'))
     } catch (error) {
@@ -1153,13 +1155,13 @@ export default function App() {
       setStatus('请先导入电影，或至少填写项目名/拆解目标后再导出。')
       return
     }
-    setMarkdownPreview(exportMarkdown(project))
+    setMarkdownPreview(exportMarkdown(project, locale))
     setStatus('文字剧本拆解 Markdown 预览已打开。')
   }
 
   function handleExportMarkdownToFile() {
     if (!markdownPreview) return
-    downloadText(`${project.projectTitle || DEFAULT_PROJECT_TITLE}.md`, markdownPreview, 'text/markdown')
+    downloadText(`${project.projectTitle || t(DEFAULT_PROJECT_TITLE)}.md`, markdownPreview, 'text/markdown')
     setMarkdownPreview(null)
     setStatus(withStarHint('Markdown 已导出。'))
   }
@@ -1169,7 +1171,11 @@ export default function App() {
       setStatus('请先生成或创建剧情段落后再导出剧本正文。')
       return
     }
-    downloadText(`${project.projectTitle || DEFAULT_PROJECT_TITLE}-剧本正文.md`, exportScreenplayText(project), 'text/markdown')
+    downloadText(
+      `${project.projectTitle || t(DEFAULT_PROJECT_TITLE)}-${t('剧本正文')}.md`,
+      exportScreenplayText(project, locale),
+      'text/markdown',
+    )
     setStatus('剧本正文已导出。')
   }
 
@@ -1260,8 +1266,8 @@ export default function App() {
   async function handleExportSegmentDeepDive() {
     if (!selectedSegment) return
     try {
-      const saved = await exportSegmentDeepDivePackage(project, selectedSegment)
-      const copied = await navigator.clipboard.writeText(buildAiChatMessage()).then(() => true, () => false)
+      const saved = await exportSegmentDeepDivePackage(project, selectedSegment, locale)
+      const copied = await navigator.clipboard.writeText(buildAiChatMessage(locale)).then(() => true, () => false)
       const copyHint = copied ? '上传指令已复制到剪贴板，先粘贴指令再传 ZIP。' : '上传时请附一句：“解压后严格按包内 prompt.md 深拆这个段落，只返回 schema.json 结构的 JSON。”'
       setStatus(`${saved === 'saved' ? '本段小包已保存，把它发给 AI。' : '本段小包已生成，请在浏览器完成下载，然后发给 AI。'}${copyHint}AI 返回 JSON 后点“导入 AI 结果”导回，会自动填进这一段。`)
     } catch (error) {
