@@ -897,10 +897,11 @@ export default function App() {
     if (!working.subtitles.length) {
       try {
         setStatus('没有内嵌字幕，正在自动搜索网络字幕...')
+        // 搜不到的片(尤其外语片名)会把候选逐个试到超时,整体封顶 45 秒别让用户干等
         const { result, miss } = await fetchAutoSubtitle(
           working.filmTitle || working.sourceVideoName || '',
           working.duration,
-          signal,
+          AbortSignal.any([signal, AbortSignal.timeout(45000)]),
         )
         if (signal.aborted) return
         if (!result && miss) {
@@ -1701,6 +1702,9 @@ export default function App() {
                     <>
                       <span>{aiImportPreview.value.hasMacroAnalysis ? '包含全片分析' : '不含全片分析'}</span>
                       <span>{aiImportPreview.value.segmentCount ? `包含 ${aiImportPreview.value.segmentCount} 个分段` : '不含分段'}</span>
+                      {aiImportPreview.value.unknownTypeCount ? (
+                        <strong>{aiImportPreview.value.unknownTypeCount} 个分段的 type 无法识别，将按「推进」导入。常见原因是 AI 把类型翻译成了别的写法，可让 AI 按任务说明里列出的值重出。</strong>
+                      ) : null}
                       {aiImportPreview.value.needsTimeline ? <strong>需要先导入电影并完成抽帧，才能应用分段。</strong> : null}
                     </>
                   )

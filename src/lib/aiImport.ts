@@ -47,6 +47,8 @@ export interface AiImportPreview {
   hasMacroAnalysis: boolean
   segmentCount: number
   needsTimeline: boolean
+  // type 既不是中文枚举也映射不回英文同义词的分段数,预览里提示而不是静默吃掉
+  unknownTypeCount?: number
   deepDive?: { title?: string; startTime?: number; endTime?: number; blockCount: number }
 }
 
@@ -57,6 +59,7 @@ export function previewAiAnalysisImport(project: Project, text: string): AiImpor
       hasMacroAnalysis: false,
       segmentCount: parsed.length,
       needsTimeline: parsed.length > 0 && !project.frames.length,
+      unknownTypeCount: countUnknownSegmentTypes(parsed as ImportedSegment[]),
     }
   }
   if (!isRecord(parsed)) throw new Error('没有识别到可解析的 AI JSON。')
@@ -68,6 +71,7 @@ export function previewAiAnalysisImport(project: Project, text: string): AiImpor
       hasMacroAnalysis: Boolean(normalizeMacroAnalysis(imported.macroAnalysis)),
       segmentCount: segments.length,
       needsTimeline: segments.length > 0 && !project.frames.length,
+      unknownTypeCount: countUnknownSegmentTypes(segments),
       deepDive: deepDive
         ? {
             title: deepDive.patch.title,
@@ -416,7 +420,64 @@ function normalizeScreenplayBlocks(project: Project, value: unknown): Segment['s
 function normalizeScreenplayBlockType(value: unknown): NonNullable<Segment['screenplayBlocks']>[number]['type'] {
   if (value === '手语/字幕') return '旁白/字幕'
   if (value === '场景' || value === '动作' || value === '对白' || value === '旁白/字幕' || value === '备注') return value
+  if (typeof value === 'string') {
+    const mapped = englishScreenplayBlockTypes[normalizeEnumKey(value)]
+    if (mapped) return mapped
+  }
   return '动作'
+}
+
+// 英文 AI 会把枚举值翻译成英文,静默回退会让数据悄悄劣化(所有段落变「推进」同色同型),
+// 这里把常见英文写法映射回中文枚举;仍映射不上的由导入预览计数提示
+const englishScreenplayBlockTypes: Record<string, NonNullable<Segment['screenplayBlocks']>[number]['type']> = {
+  'scene': '场景', 'scene heading': '场景', 'slugline': '场景',
+  'action': '动作',
+  'dialogue': '对白', 'dialog': '对白',
+  'narration': '旁白/字幕', 'voiceover': '旁白/字幕', 'voice over': '旁白/字幕', 'vo': '旁白/字幕', 'caption': '旁白/字幕',
+  'note': '备注', 'remark': '备注', 'comment': '备注',
+}
+
+const englishSegmentTypes: Record<string, SegmentType> = {
+  'opening': '开场', 'intro': '开场', 'introduction': '开场', 'setup': '开场', 'cold open': '开场',
+  'conflict': '冲突', 'inciting incident': '冲突',
+  'progression': '推进', 'development': '推进', 'advance': '推进', 'rising action': '推进', 'buildup': '推进',
+  'turning point': '转折', 'turn': '转折', 'twist': '转折', 'reversal': '转折', 'midpoint': '转折',
+  'escalation': '升级',
+  'low point': '低谷', 'low': '低谷', 'dark moment': '低谷', 'all is lost': '低谷',
+  'climax': '高潮', 'peak': '高潮',
+  'ending': '结尾', 'resolution': '结尾', 'denouement': '结尾', 'finale': '结尾', 'falling action': '结尾',
+  'subplot': '支线', 'side plot': '支线', 'b plot': '支线',
+  'transition': '过渡',
+  'background': '背景', 'context': '背景',
+  'exposition': '说明',
+  'conclusion': '结论', 'epilogue': '结论',
+}
+
+const englishNarrativeOrders: Record<string, NarrativeOrder> = {
+  'chronological': '顺叙', 'linear': '顺叙', 'sequential': '顺叙',
+  'flashback': '倒叙', 'reverse': '倒叙',
+  'insert': '插叙', 'interlude': '插叙',
+  'parallel': '并行叙事', 'parallel narrative': '并行叙事',
+  'montage': '蒙太奇压缩',
+  'information reversal': '信息反转',
+  'circular': '循环叙事', 'loop': '循环叙事', 'cyclic': '循环叙事',
+  'subjective': '主观视角', 'pov': '主观视角', 'point of view': '主观视角',
+  'multi thread': '多线并行', 'multiline': '多线并行', 'multiple threads': '多线并行', 'multi line': '多线并行',
+  'main': '主线', 'main line': '主线', 'mainline': '主线', 'main plot': '主线', 'a plot': '主线',
+}
+
+// 统一英文枚举键:小写、去首尾空白、下划线/连字符当空格、空格折叠
+function normalizeEnumKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
+}
+
+function countUnknownSegmentTypes(segments: ImportedSegment[]): number {
+  return segments.filter((segment) => {
+    const value = segment.type
+    // 没给 type 是另一回事(走默认值),只统计给了但认不出的
+    if (typeof value !== 'string' || !value.trim()) return false
+    return !segmentTypes.includes(value as SegmentType) && !englishSegmentTypes[normalizeEnumKey(value)]
+  }).length
 }
 
 function normalizeAudienceCurvePoints(points: ImportedAudienceCurvePoint[], duration: number): AudienceCurvePoint[] {
@@ -490,12 +551,16 @@ function normalizeImportance(value: unknown): Segment['importance'] {
   return undefined
 }
 
-function normalizeSegmentType(value?: SegmentType): SegmentType {
-  return value && segmentTypes.includes(value) ? value : '推进'
+function normalizeSegmentType(value?: string): SegmentType {
+  if (value && segmentTypes.includes(value as SegmentType)) return value as SegmentType
+  const mapped = value ? englishSegmentTypes[normalizeEnumKey(value)] : undefined
+  return mapped ?? '推进'
 }
 
-function normalizeNarrativeOrder(value?: NarrativeOrder): NarrativeOrder {
-  return value && narrativeOrders.includes(value) ? value : '顺叙'
+function normalizeNarrativeOrder(value?: string): NarrativeOrder {
+  if (value && narrativeOrders.includes(value as NarrativeOrder)) return value as NarrativeOrder
+  const mapped = value ? englishNarrativeOrders[normalizeEnumKey(value)] : undefined
+  return mapped ?? '顺叙'
 }
 
 function stringOr(value: unknown, fallback = ''): string {
