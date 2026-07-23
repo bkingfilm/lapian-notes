@@ -18,6 +18,8 @@ import { extractVideoFrames } from './lib/videoFrames'
 import { parseSubtitle } from './lib/srt'
 import { extractEmbeddedSubtitles } from './lib/videoSubtitles'
 import { buildAiChatMessage, exportAiAnalysisPackage, exportProjectPackage, exportSegmentDeepDivePackage, importProjectPackage } from './lib/framePackage'
+import { buildDomesticAiChatMessage, exportDomesticAiPackage } from './lib/domesticAiPackage'
+import { RELEASES_PAGE, checkForUpdate, dismissUpdate } from './lib/updateCheck'
 import { cleanSubtitles, fetchAutoSubtitle } from './lib/autoSubtitle'
 import { probeVideoPlayable, transcodeVideo } from './lib/transcode'
 import { loadAutosave, saveAutosave, clearAutosave } from './lib/autosave'
@@ -75,6 +77,18 @@ export default function App() {
   const [libraryProjects, setLibraryProjects] = useState<ProjectSummary[] | null>(null)
   // 打开页面时若恢复了上次项目,显示一次性欢迎条,告知来源并给出口
   const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(() => Boolean(INITIAL_PROJECT))
+  // GitHub 上有更新的版本时提示一行,忽略过的版本不再提
+  const [updateTag, setUpdateTag] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void checkForUpdate().then((info) => {
+      if (!cancelled && info) setUpdateTag(info.latestTag)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const [frameRangeStartId, setFrameRangeStartId] = useState<string | null>(null)
   const [frameRangeEndId, setFrameRangeEndId] = useState<string | null>(null)
 
@@ -469,6 +483,42 @@ export default function App() {
       await announceAiPackageResult(saved, sourceProject.subtitles.length === 0)
     } catch (error) {
       setStatus(`生成 AI 分析包失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  // 国内大模型(Kimi/豆包/通义等)不收 ZIP,导出散文件+画面速览拼图
+  async function handleGenerateDomesticAiPackage() {
+    if (!project.sourceVideoName) {
+      setStatus('请先导入电影。')
+      return
+    }
+    if (extractAbort || analysisAbort) {
+      setStatus('当前有正在进行的任务。')
+      return
+    }
+
+    try {
+      let sourceProject = project
+      if (!sourceProject.frames.length) {
+        setStatus('正在按 1 秒间隔抽帧，准备 AI 分析材料...')
+        const rebuilt = await startExtractFrames(true, { ...sourceProject, frameInterval: 1 }, 1)
+        if (!rebuilt) return
+        sourceProject = rebuilt
+      }
+      const exported = await exportDomesticAiPackage(sourceProject)
+      const copied = await navigator.clipboard
+        .writeText(buildDomesticAiChatMessage(sourceProject.subtitles.length > 0))
+        .then(() => true, () => false)
+      const copyHint = copied
+        ? '发给 AI 的指令已复制到剪贴板：先粘贴指令，再把这些文件全选上传。'
+        : '上传时请附一句：“按 1-任务说明.txt 的要求分析，只返回任务说明末尾结构示例的 JSON。”'
+      const savedHint = exported.result === 'saved'
+        ? `AI 分析材料已保存到你选的文件夹（共 ${exported.fileCount} 个文件，含 ${exported.sheetCount} 张画面拼图，画面间隔约 ${exported.tileIntervalSeconds} 秒）。`
+        : `AI 分析材料已逐个下载（共 ${exported.fileCount} 个文件，浏览器若询问“允许下载多个文件”请允许）。`
+      setStatus(`${savedHint}${copyHint}完成后把 AI 返回的 JSON 导入回来。`)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setStatus(`生成 AI 分析材料失败：${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -1418,12 +1468,31 @@ export default function App() {
         onVideoPath={() => void openVideoPicker()}
         onSubtitle={() => subtitleInputRef.current?.click()}
         onGenerateAiPackage={handleGenerateAiPackage}
+        onGenerateDomesticAiPackage={() => void handleGenerateDomesticAiPackage()}
         onImportAiResult={() => aiResultInputRef.current?.click()}
         onExportMarkdown={handleExportMarkdown}
         onExportScreenplay={handleExportScreenplayText}
         onExportShareImage={handleExportShareImage}
         onOpenGuide={() => setIsGuideOpen(true)}
       />
+
+      {updateTag ? (
+        <div className="update-banner">
+          <span>
+            拉片笔记 {updateTag} 已发布（当前 v{__APP_VERSION__}）。
+            <a href={RELEASES_PAGE} target="_blank" rel="noreferrer">去下载新版</a>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              dismissUpdate(updateTag)
+              setUpdateTag(null)
+            }}
+          >
+            忽略这个版本
+          </button>
+        </div>
+      ) : null}
 
       <section className="workspace">
         <section className="main-pane">

@@ -10,7 +10,7 @@ interface ZipEntry {
   crc: number
 }
 
-type FileSaveResult = 'saved' | 'downloaded'
+export type FileSaveResult = 'saved' | 'downloaded'
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
@@ -225,9 +225,23 @@ function buildAiReadme(project: Project): string {
   ].filter(Boolean).join('\n')
 }
 
-function buildAiPrompt(project: Project): string {
+// 国内大模型(Kimi/豆包/通义等)不支持上传 ZIP,免压缩包模式改为散文件+画面速览拼图
+export interface LooseSheetInfo {
+  sheetCount: number
+  tileIntervalSeconds: number
+}
+
+export function buildAiPrompt(project: Project, looseSheets?: LooseSheetInfo): string {
   return [
-    '你是一名电影剧本拆解助手。请读取这个压缩包中的截图、字幕和资料，把电影整理成“拉片笔记”能导入的 JSON。',
+    looseSheets
+      ? '你是一名电影剧本拆解助手。我上传的文件是一部电影的分析材料：任务说明（本文件）、画面速览拼图，可能还有字幕全文。请据此把电影整理成“拉片笔记”能导入的 JSON。'
+      : '你是一名电影剧本拆解助手。请读取这个压缩包中的截图、字幕和资料，把电影整理成“拉片笔记”能导入的 JSON。',
+    ...(looseSheets
+      ? [
+          '',
+          `画面速览拼图共 ${looseSheets.sheetCount} 张：每张由多格电影截图按时间顺序拼成，每格左上角标着这格画面的时间码，截图间隔约 ${looseSheets.tileIntervalSeconds} 秒。`,
+        ]
+      : []),
     '',
     '核心目标：',
     '1. 按真实剧情变化切分段落，不要按片长平均切。',
@@ -236,11 +250,17 @@ function buildAiPrompt(project: Project): string {
     '4. 每个段落必须写“作用”：评价这一段在整部影片结构、人物关系、信息释放和节奏中的作用。',
     '5. 结构树应区分主线、支线、情感线、信息线、节奏/过渡线；允许同一段属于多条线。',
     project.subtitles.length
-      ? '6. 每段请参考 frames/ 中起点、中点、终点附近的画面，并结合 subtitles.srt 判断剧情。'
-      : '6. 本包没有字幕：对白无法获得，请完全依靠 frames/ 画面截图判断剧情，无法确认的对白内容不要编造。',
+      ? (looseSheets
+          ? '6. 每段请结合字幕全文和速览拼图里对应时间码的画面判断剧情。'
+          : '6. 每段请参考 frames/ 中起点、中点、终点附近的画面，并结合 subtitles.srt 判断剧情。')
+      : (looseSheets
+          ? '6. 没有字幕：对白无法获得，请完全依靠速览拼图的画面判断剧情，无法确认的对白内容不要编造。'
+          : '6. 本包没有字幕：对白无法获得，请完全依靠 frames/ 画面截图判断剧情，无法确认的对白内容不要编造。'),
     '7. 事实纪律：人物名、地名、身份、故事发生地等设定必须以字幕和画面证据为准，没有证据就不要写；宁可留空，不要脑补。',
     '8. keyBeats 里每个节拍前面标注时间码（如“52:30 小鱼提出同住”），方便人工回看核对。',
-    '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
+    looseSheets
+      ? '9. techniques 字段必填：每段至少写一条镜头、剪辑或转场层面的视听手法，从速览拼图里观察构图和景别变化；画面间隔较大，只写有画面证据的。'
+      : '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
     '',
     '请严格返回 JSON，不要输出 JSON 之外的说明。JSON 顶层必须包含 movieIdentity 和 segments，可选包含 macroAnalysis、storyLines。',
     'movieIdentity 必须原样带回影片名、项目名和源视频文件名，用于工具导入时校验是否选错电影。',
@@ -285,9 +305,14 @@ function buildAiPrompt(project: Project): string {
     `项目名：${project.projectTitle || project.filmTitle || '未命名项目'}`,
     `源视频文件名：${project.sourceVideoName || '未记录'}`,
     `片长：${project.duration} 秒`,
-    `抽帧间隔：${project.frameInterval} 秒`,
-    `帧数量：${project.frames.length}`,
+    ...(looseSheets
+      ? [`画面速览拼图：${looseSheets.sheetCount} 张，截图间隔约 ${looseSheets.tileIntervalSeconds} 秒`]
+      : [`抽帧间隔：${project.frameInterval} 秒`, `帧数量：${project.frames.length}`]),
     `字幕数量：${project.subtitles.length}`,
+    // 免压缩包模式没有独立的 schema.json,结构示例直接附在任务说明末尾
+    ...(looseSheets
+      ? ['', '返回 JSON 的结构示例（严格按这个结构，字段要求写在示例值里）：', JSON.stringify(buildAiSchema(), null, 2)]
+      : []),
   ].filter(Boolean).join('\n')
 }
 
@@ -384,7 +409,7 @@ function buildSrt(project: Project): string {
   return buildSrtFromSubtitles(project.subtitles)
 }
 
-function buildSrtFromSubtitles(subtitles: Subtitle[]): string {
+export function buildSrtFromSubtitles(subtitles: Subtitle[]): string {
   return subtitles
     .map((subtitle, index) => [
       String(index + 1),
@@ -412,7 +437,7 @@ function createBinaryEntry(path: string, bytes: Uint8Array): ZipEntry {
   }
 }
 
-function isDataImage(src: string): boolean {
+export function isDataImage(src: string): boolean {
   return src.startsWith('data:image/') || src.startsWith('blob:')
 }
 
@@ -580,6 +605,6 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0
 }
 
-function safeName(value: string): string {
+export function safeName(value: string): string {
   return value.trim().replace(/[\\/:*?"<>|]/g, '_') || DEFAULT_PROJECT_NAME
 }

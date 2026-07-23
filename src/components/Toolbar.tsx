@@ -9,6 +9,7 @@ interface ToolbarProps {
   onVideoPath: () => void
   onSubtitle: () => void
   onGenerateAiPackage: () => void
+  onGenerateDomesticAiPackage: () => void
   onImportAiResult: () => void
   onExportMarkdown: () => void
   onExportScreenplay: () => void
@@ -46,9 +47,17 @@ export function Toolbar(props: ToolbarProps) {
 
         <div className="tool-section">
           <span>② 发给 AI</span>
-          <button disabled={!canGenerateAiPackage} title="必选:打包截图和字幕,发给 ChatGPT / Gemini / Claude / Kimi 等能读压缩包和图片的 AI" onClick={props.onGenerateAiPackage}>
+          <button disabled={!canGenerateAiPackage} title="必选:打包截图和字幕,发给 ChatGPT / Gemini / Claude 等能读压缩包的 AI" onClick={props.onGenerateAiPackage}>
             <em className="required-star">*</em>
             生成 AI 分析包
+          </button>
+          <button
+            disabled={!canGenerateAiPackage}
+            title="Kimi / 豆包 / 通义 / DeepSeek 等传不了 ZIP 的 AI 用这个:导出任务说明、字幕和画面拼图散文件,上传时全选发给 AI"
+            onClick={props.onGenerateDomesticAiPackage}
+          >
+            国内 AI 免压缩包版
+            <small className="optional-tag">选用</small>
           </button>
         </div>
 

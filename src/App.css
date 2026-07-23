@@ -560,6 +560,30 @@ textarea {
   overflow: visible !important;
 }
 
+.update-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border-bottom: 1px solid #f0e2c0;
+  background: #fdf7e8;
+  color: #5a4a22;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.update-banner a {
+  margin-left: 8px;
+  color: #2d6cdf;
+  font-weight: 700;
+}
+
+.update-banner button {
+  flex-shrink: 0;
+}
+
 .welcome-back-banner {
   display: flex;
   justify-content: space-between;
