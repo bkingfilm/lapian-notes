@@ -93,7 +93,7 @@ async function findSubtitle(rawName: string, durationSeconds: number): Promise<S
 function extractSearchKeyword(rawName: string): string {
   const noExt = rawName.replace(/\.[a-z0-9]{2,5}$/i, '')
   const tokens = noExt
-    .split(/[【】\[\]()（）._\-\s]+/)
+    .split(/[-\u3010\u3011\x5b\x5d()\uff08\uff09._\s]+/)
     .map((token) => token.trim())
     .filter((token) => token && !NOISE_TOKENS.test(token))
   const chinese = tokens.filter((token) => /[一-龥]/.test(token))

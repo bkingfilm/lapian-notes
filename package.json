@@ -10,7 +10,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test tests/i18n/core.test.ts"
+    "test": "node scripts/run-tests.mjs",
+    "audit:i18n": "node scripts/audit-i18n.mjs",
+    "check": "npm run test && npm run audit:i18n && npm run lint && npm run build"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

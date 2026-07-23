@@ -48,7 +48,7 @@ export async function transcodeVideo(
   while (true) {
     if (signal?.aborted) return null
     await sleep(1500)
-    let state: { status?: string; percent?: number; videoUrl?: string; subtitleContent?: string; error?: string } | null = null
+    let state: { status?: string; percent?: number; videoUrl?: string; subtitleContent?: string; error?: string }
     try {
       const response = await fetch(`/api/transcode/status?id=${id}`, { signal })
       if (!response.ok) return null
@@ -56,7 +56,6 @@ export async function transcodeVideo(
     } catch {
       return null
     }
-    if (!state) return null
     if (state.status === 'error') throw new Error(state.error || '本地转码失败')
     onProgress(state.percent ?? 0)
     if (state.status === 'done' && state.videoUrl) {

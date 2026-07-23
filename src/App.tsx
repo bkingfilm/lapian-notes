@@ -166,6 +166,8 @@ export default function App() {
       .finally(() => {
         void tryRestoreVideoHandle(INITIAL_PROJECT)
       })
+    // INITIAL_PROJECT is a mount-time snapshot; restoration must run only once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
