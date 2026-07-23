@@ -30,7 +30,7 @@ export function ProjectLibrary(props: ProjectLibraryProps) {
             {props.projects.map((item) => (
               <li key={item.id} className={item.id === props.currentProjectId ? 'current' : ''}>
                 <div className="project-library-info">
-                  <strong>{item.title}</strong>
+                  <strong data-i18n-ignore>{item.title}</strong>
                   <span>
                     {item.duration ? `片长 ${secondsToTimecode(item.duration)}｜` : ''}
                     段落 {item.segmentCount}｜时间点 {item.frameCount}
