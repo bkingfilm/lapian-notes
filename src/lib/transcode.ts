@@ -48,7 +48,7 @@ export async function transcodeVideo(
   while (true) {
     if (signal?.aborted) return null
     await sleep(1500)
-    let state: { status?: string; percent?: number; videoUrl?: string; subtitleContent?: string; error?: string } | null = null
+    let state: { status?: string; percent?: number; videoUrl?: string; subtitleContent?: string; error?: string } | null
     try {
       const response = await fetch(`/api/transcode/status?id=${id}`, { signal })
       if (!response.ok) return null
