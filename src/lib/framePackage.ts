@@ -1,4 +1,7 @@
 import type { Project, Segment, Subtitle } from '../types'
+import type { Locale } from '../i18n/core'
+import { createGeneratedTextLocalizer, protectProjectAuthoredText, protectSegmentAuthoredText } from '../i18n/generated'
+import { translateText } from '../i18n/translate'
 import { compactProjectForPersistence, normalizeLoadedProject } from './project'
 import { exportMarkdown } from './markdown'
 import { frameFileName, imageMimeFromFileName, possibleFrameFileNames } from './frameFileName'
@@ -15,11 +18,11 @@ type FileSaveResult = 'saved' | 'downloaded'
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
-const DEFAULT_PROJECT_NAME = '\u62c9\u7247\u9879\u76ee'
-const PROJECT_PACKAGE_SUFFIX = '\u9879\u76ee'
-const ZIP_FILE_LABEL = 'ZIP \u6587\u4ef6'
+const DEFAULT_PROJECT_NAME = '拉片项目'
+const PROJECT_PACKAGE_SUFFIX = '项目'
+const ZIP_FILE_LABEL = 'ZIP 文件'
 
-export async function exportProjectPackage(project: Project): Promise<FileSaveResult> {
+export async function exportProjectPackage(project: Project, locale: Locale = 'zh-CN'): Promise<FileSaveResult> {
   const exportableFrames = project.frames.filter((frame) => isDataImage(frame.src))
   const projectJson = {
     ...compactProjectForPersistence(project),
@@ -27,7 +30,7 @@ export async function exportProjectPackage(project: Project): Promise<FileSaveRe
   }
   const entries: ZipEntry[] = [
     createTextEntry('project.json', JSON.stringify(projectJson, null, 2)),
-    createTextEntry('analysis.md', exportMarkdown(project)),
+    createTextEntry('analysis.md', exportMarkdown(project, locale)),
     ...(await Promise.all(
       exportableFrames.map(async (frame) => createBinaryEntry('frames/' + frameFileName(frame), await dataUrlToBytes(frame.src))),
     )),
@@ -48,21 +51,27 @@ export async function exportProjectPackage(project: Project): Promise<FileSaveRe
     ),
   ]
 
-  return saveZip(safeName(project.projectTitle || project.filmTitle || DEFAULT_PROJECT_NAME) + '-' + PROJECT_PACKAGE_SUFFIX + '.zip', entries)
+  const fallbackName = translateText(DEFAULT_PROJECT_NAME, locale)
+  const suffix = translateText(PROJECT_PACKAGE_SUFFIX, locale)
+  return saveZip(
+    `${safeName(project.projectTitle || project.filmTitle || fallbackName, fallbackName)}-${suffix}.zip`,
+    entries,
+    locale,
+  )
 }
 
 // 上传 ZIP 给 AI 时配的开场白。任务详情在包内 prompt.md,但 AI 不会主动解压,必须由这句话触发
-export function buildAiChatMessage(): string {
-  return '解压这个 ZIP，严格按照包内 prompt.md 的要求分析这部电影，参考 frames/ 截图和 subtitles.srt，最终只输出符合 schema.json 结构的 JSON 文件给我下载，不要输出 JSON 之外的内容。'
+export function buildAiChatMessage(locale: Locale = 'zh-CN'): string {
+  return translateText('解压这个 ZIP，严格按照包内 prompt.md 的要求分析这部电影，参考 frames/ 截图和 subtitles.srt，最终只输出符合 schema.json 结构的 JSON 文件给我下载，不要输出 JSON 之外的内容。', locale)
 }
 
-export async function exportAiAnalysisPackage(project: Project): Promise<FileSaveResult> {
+export async function exportAiAnalysisPackage(project: Project, locale: Locale = 'zh-CN'): Promise<FileSaveResult> {
   const exportableFrames = project.frames.filter((frame) => isDataImage(frame.src))
-  if (!exportableFrames.length) throw new Error('没有可导出的抽帧图片，请先导入电影并完成抽帧。')
+  if (!exportableFrames.length) throw new Error(translateText('没有可导出的抽帧图片，请先导入电影并完成抽帧。', locale))
   const exportedAt = new Date().toISOString()
   const entries: ZipEntry[] = [
-    createTextEntry('README.md', buildAiReadme(project)),
-    createTextEntry('prompt.md', buildAiPrompt(project)),
+    createTextEntry('README.md', buildAiReadme(project, locale)),
+    createTextEntry('prompt.md', buildAiPrompt(project, locale)),
     createTextEntry('schema.json', JSON.stringify(buildAiSchema(), null, 2)),
     createTextEntry('project.json', JSON.stringify(buildAiProjectMeta(project, exportableFrames.length, exportedAt), null, 2)),
     ...(project.subtitles.length
@@ -76,20 +85,33 @@ export async function exportAiAnalysisPackage(project: Project): Promise<FileSav
     )),
   ]
 
-  return saveZip(safeName(project.projectTitle || project.filmTitle || DEFAULT_PROJECT_NAME) + '-AI分析包.zip', entries)
+  const fallbackName = translateText(DEFAULT_PROJECT_NAME, locale)
+  const suffix = translateText('AI分析包', locale)
+  return saveZip(
+    `${safeName(project.projectTitle || project.filmTitle || fallbackName, fallbackName)}-${suffix}.zip`,
+    entries,
+    locale,
+  )
 }
 
 // 单段深拆包:只装选中段落的帧和字幕,让 AI 把这一段拆到场和镜头级
-export async function exportSegmentDeepDivePackage(project: Project, segment: Segment): Promise<FileSaveResult> {
+export async function exportSegmentDeepDivePackage(
+  project: Project,
+  segment: Segment,
+  locale: Locale = 'zh-CN',
+): Promise<FileSaveResult> {
   const segmentFrames = project.frames.filter(
     (frame) => frame.time >= segment.startTime && frame.time <= segment.endTime && isDataImage(frame.src),
   )
-  if (!segmentFrames.length) throw new Error('这个段落没有可导出的帧图，请先完成抽帧。')
+  if (!segmentFrames.length) throw new Error(translateText('这个段落没有可导出的帧图，请先完成抽帧。', locale))
   const segmentSubtitles = project.subtitles.filter(
     (subtitle) => subtitle.startTime <= segment.endTime && subtitle.endTime >= segment.startTime,
   )
   const entries: ZipEntry[] = [
-    createTextEntry('prompt.md', buildSegmentDeepDivePrompt(project, segment, segmentFrames.length, segmentSubtitles.length)),
+    createTextEntry(
+      'prompt.md',
+      buildSegmentDeepDivePrompt(project, segment, segmentFrames.length, segmentSubtitles.length, locale),
+    ),
     createTextEntry('schema.json', JSON.stringify(buildSegmentDeepDiveSchema(segment), null, 2)),
     createTextEntry('subtitles.srt', buildSrtFromSubtitles(segmentSubtitles)),
     createTextEntry(
@@ -118,13 +140,31 @@ export async function exportSegmentDeepDivePackage(project: Project, segment: Se
     )),
   ]
   const rangeText = `${secondsToTimecode(segment.startTime)}-${secondsToTimecode(segment.endTime)}`.replaceAll(':', '')
+  const fallbackName = translateText(DEFAULT_PROJECT_NAME, locale)
+  const suffix = translateText('段落深拆', locale)
   return saveZip(
-    `${safeName(project.projectTitle || project.filmTitle || DEFAULT_PROJECT_NAME)}-段落深拆-${rangeText}.zip`,
+    `${safeName(project.projectTitle || project.filmTitle || fallbackName, fallbackName)}-${suffix}-${rangeText}.zip`,
     entries,
+    locale,
   )
 }
 
-function buildSegmentDeepDivePrompt(project: Project, segment: Segment, frameCount: number, subtitleCount: number): string {
+function buildSegmentDeepDivePrompt(
+  project: Project,
+  segment: Segment,
+  frameCount: number,
+  subtitleCount: number,
+  locale: Locale = 'zh-CN',
+): string {
+  const localizer = createGeneratedTextLocalizer(locale)
+  const protectedProject = protectProjectAuthoredText(project, localizer.protect)
+  const protectedSegment = protectSegmentAuthoredText(segment, localizer.protect)
+  return localizer.localize(
+    buildSegmentDeepDivePromptSource(protectedProject, protectedSegment, frameCount, subtitleCount),
+  )
+}
+
+function buildSegmentDeepDivePromptSource(project: Project, segment: Segment, frameCount: number, subtitleCount: number): string {
   return [
     '你是一名电影拉片助手。这个压缩包只包含一部电影中的一个段落，请把这一段拆到“场与镜头”级别，返回“拉片笔记”能导入的 JSON。',
     '',
@@ -178,10 +218,13 @@ function buildSegmentDeepDiveSchema(segment: Segment) {
   }
 }
 
-export async function importProjectPackage(file: File): Promise<{ project: Project; restoredCount: number }> {
-  const entries = readZipEntries(new Uint8Array(await file.arrayBuffer()))
+export async function importProjectPackage(
+  file: File,
+  locale: Locale = 'zh-CN',
+): Promise<{ project: Project; restoredCount: number }> {
+  const entries = readZipEntries(new Uint8Array(await file.arrayBuffer()), locale)
   const projectEntry = entries.get('project.json')
-  if (!projectEntry) throw new Error('\u9879\u76ee\u6587\u4ef6\u7f3a\u5c11 project.json\u3002')
+  if (!projectEntry) throw new Error(translateText('项目文件缺少 project.json。', locale))
 
   const project = normalizeLoadedProject(JSON.parse(textDecoder.decode(projectEntry)))
   const restoredFrames = await Promise.all(
@@ -207,9 +250,16 @@ function createTextEntry(path: string, content: string): ZipEntry {
   return createBinaryEntry(path, textEncoder.encode(content))
 }
 
-function buildAiReadme(project: Project): string {
+function buildAiReadme(project: Project, locale: Locale = 'zh-CN'): string {
+  const localizer = createGeneratedTextLocalizer(locale)
+  const protectedProject = protectProjectAuthoredText(project, localizer.protect)
+  const packageLabel = translateText('AI分析包', locale)
+  return localizer.localize(buildAiReadmeSource(protectedProject, packageLabel))
+}
+
+function buildAiReadmeSource(project: Project, packageLabel: string): string {
   return [
-    '# ' + (project.projectTitle || project.filmTitle || DEFAULT_PROJECT_NAME) + ' AI 分析包',
+    '# ' + (project.projectTitle || project.filmTitle || DEFAULT_PROJECT_NAME) + ' ' + packageLabel,
     '',
     '这个压缩包用于交给 AI 分析电影结构。',
     '',
@@ -225,7 +275,13 @@ function buildAiReadme(project: Project): string {
   ].filter(Boolean).join('\n')
 }
 
-function buildAiPrompt(project: Project): string {
+function buildAiPrompt(project: Project, locale: Locale = 'zh-CN'): string {
+  const localizer = createGeneratedTextLocalizer(locale)
+  const protectedProject = protectProjectAuthoredText(project, localizer.protect)
+  return localizer.localize(buildAiPromptSource(protectedProject))
+}
+
+function buildAiPromptSource(project: Project): string {
   return [
     '你是一名电影剧本拆解助手。请读取这个压缩包中的截图、字幕和资料，把电影整理成“拉片笔记”能导入的 JSON。',
     '',
@@ -426,13 +482,17 @@ function bytesToObjectUrl(bytes: Uint8Array, mime: string): string {
   return URL.createObjectURL(new Blob([buffer], { type: mime }))
 }
 
-async function saveZip(filename: string, entries: ZipEntry[]): Promise<FileSaveResult> {
+async function saveZip(filename: string, entries: ZipEntry[], locale: Locale = 'zh-CN'): Promise<FileSaveResult> {
   const zipBytes = createZip(entries)
   const zipBuffer = zipBytes.buffer.slice(zipBytes.byteOffset, zipBytes.byteOffset + zipBytes.byteLength) as ArrayBuffer
-  return saveBlobFile(filename, new Blob([zipBuffer], { type: 'application/zip' }))
+  return saveBlobFile(filename, new Blob([zipBuffer], { type: 'application/zip' }), locale)
 }
 
-async function saveBlobFile(filename: string, blob: Blob): Promise<FileSaveResult> {
+async function saveBlobFile(
+  filename: string,
+  blob: Blob,
+  locale: Locale = 'zh-CN',
+): Promise<FileSaveResult> {
   const picker = (window as Window & {
     showSaveFilePicker?: (options: {
       suggestedName: string
@@ -444,7 +504,7 @@ async function saveBlobFile(filename: string, blob: Blob): Promise<FileSaveResul
     try {
       const handle = await picker({
         suggestedName: filename,
-        types: [{ description: ZIP_FILE_LABEL, accept: { 'application/zip': ['.zip'] } }],
+        types: [{ description: translateText(ZIP_FILE_LABEL, locale), accept: { 'application/zip': ['.zip'] } }],
       })
       const writable = await handle.createWritable()
       await writable.write(blob)
@@ -485,14 +545,18 @@ function createZip(entries: ZipEntry[]): Uint8Array {
   return concatBytes([...localParts, ...centralParts, end])
 }
 
-function readZipEntries(bytes: Uint8Array): Map<string, Uint8Array> {
+function readZipEntries(bytes: Uint8Array, locale: Locale = 'zh-CN'): Map<string, Uint8Array> {
   const entries = new Map<string, Uint8Array>()
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   let offset = 0
 
   while (offset + 30 <= bytes.length && view.getUint32(offset, true) === 0x04034b50) {
     const method = view.getUint16(offset + 8, true)
-    if (method !== 0) throw new Error('\u5f53\u524d\u4ec5\u652f\u6301\u672a\u538b\u7f29 ZIP\uff0c\u8bf7\u4f7f\u7528\u672c\u5de5\u5177\u5bfc\u51fa\u7684\u6587\u4ef6\u3002')
+    if (method !== 0) {
+      throw new Error(
+        translateText('当前仅支持未压缩 ZIP，请使用本工具导出的文件。', locale),
+      )
+    }
     const compressedSize = view.getUint32(offset + 18, true)
     const fileNameLength = view.getUint16(offset + 26, true)
     const extraLength = view.getUint16(offset + 28, true)
@@ -580,6 +644,6 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0
 }
 
-function safeName(value: string): string {
-  return value.trim().replace(/[\\/:*?"<>|]/g, '_') || DEFAULT_PROJECT_NAME
+function safeName(value: string, fallback = DEFAULT_PROJECT_NAME): string {
+  return value.trim().replace(/[\\/:*?"<>|]/g, '_') || fallback
 }

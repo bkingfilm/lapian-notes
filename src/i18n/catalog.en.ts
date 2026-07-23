@@ -866,4 +866,10 @@ export const englishCatalog = {
   "写入临时文件失败：${error.message}": "Failed to write to temporary file: ${error.message}",
   "文件名+大小": "File name + size",
   "转码没有产出有效文件": "Transcoding did not produce valid files",
+  "拉片项目": "Lapian Notes project",
+  "ZIP 文件": "ZIP file",
+  "AI分析包": "AI analysis package",
+  "段落深拆": "segment deep dive",
+  "项目文件缺少 project.json。": "Project package is missing project.json.",
+  "当前仅支持未压缩 ZIP，请使用本工具导出的文件。": "Only uncompressed ZIP archives are supported. Use a file exported by this tool.",
 } as const satisfies Readonly<Record<string, string>>

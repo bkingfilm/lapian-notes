@@ -1,4 +1,6 @@
 import type { Frame, Project, ScreenplayBlockType, Segment, Subtitle } from '../types'
+import type { Locale } from '../i18n/core'
+import { createGeneratedTextLocalizer, protectProjectAuthoredText } from '../i18n/generated'
 import { getMacroProgress } from './macroProgress'
 import { getSegmentCoverage } from './segmentCoverage'
 import { getSegmentProgress } from './segmentProgress'
@@ -52,7 +54,13 @@ const audienceRhythmRoleLabels = {
   aftertaste: '余韵',
 } as const
 
-export function exportMarkdown(project: Project): string {
+export function exportMarkdown(project: Project, locale: Locale = 'zh-CN'): string {
+  const localizer = createGeneratedTextLocalizer(locale)
+  const protectedProject = protectProjectAuthoredText(project, localizer.protect)
+  return localizer.localize(exportMarkdownSource(protectedProject))
+}
+
+function exportMarkdownSource(project: Project): string {
   const macro = project.macroAnalysis
   const sortedSegments = [...project.segments].sort((a, b) => a.startTime - b.startTime)
   const coverage = getSegmentCoverage(sortedSegments, project.duration)
@@ -146,7 +154,13 @@ export function exportMarkdown(project: Project): string {
   ].filter((line) => line !== '').join('\n')
 }
 
-export function exportScreenplayText(project: Project): string {
+export function exportScreenplayText(project: Project, locale: Locale = 'zh-CN'): string {
+  const localizer = createGeneratedTextLocalizer(locale)
+  const protectedProject = protectProjectAuthoredText(project, localizer.protect)
+  return localizer.localize(exportScreenplayTextSource(protectedProject))
+}
+
+function exportScreenplayTextSource(project: Project): string {
   const sortedSegments = [...project.segments].sort((a, b) => a.startTime - b.startTime)
   return [
     `# ${project.projectTitle || project.filmTitle || '文字剧本正文'}`,

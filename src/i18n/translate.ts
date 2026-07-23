@@ -1,5 +1,5 @@
-import { englishCatalog } from './catalog.en'
-import { createTranslator, type Locale } from './core'
+import { englishCatalog } from './catalog.en.ts'
+import { createTranslator, type Locale } from './core.ts'
 
 const translateEnglish = createTranslator(englishCatalog)
 
