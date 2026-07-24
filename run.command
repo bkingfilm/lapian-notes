@@ -82,15 +82,17 @@ if [ ! -d node_modules ]; then
   else
     REGISTRIES="https://registry.npmjs.org https://registry.npmmirror.com"
   fi
+  INSTALLED=""
   for REGISTRY in $REGISTRIES; do
     if [ -f "$NPM_CLI" ]; then
       "$NODE_EXE" "$NPM_CLI" install --no-audit --no-fund --registry="$REGISTRY" > install.log 2>&1
     else
       npm install --no-audit --no-fund --registry="$REGISTRY" > install.log 2>&1
     fi
-    [ -d node_modules ] && break
+    # 失败的 npm install 也可能留下半截 node_modules,必须同时看退出码
+    if [ $? -eq 0 ] && [ -d node_modules ]; then INSTALLED=1; break; fi
   done
-  if [ ! -d node_modules ]; then
+  if [ -z "$INSTALLED" ]; then
     say_line ""
     say_line "组件安装失败,最近日志: / Component install failed, recent log:"
     tail -n 8 install.log 2>/dev/null
