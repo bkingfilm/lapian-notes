@@ -40,7 +40,7 @@ npm run dev
 
 Open the printed localhost address. On Windows you can simply double-click `run.bat`; on macOS double-click `run.command` (first run: Control-click → Open).
 
-Note for international users: the automatic subtitle search targets a Chinese subtitle site, and the bootstrap scripts prefer China-based mirrors. Manual subtitle import (SRT/ASS/VTT) works everywhere.
+Automatic subtitle search picks its source by film title: non-Chinese titles search OpenSubtitles (English subtitles, zero setup), Chinese titles search a Chinese subtitle site. Optional: grab a free API key from [opensubtitles.com](https://www.opensubtitles.com/) and set the `OPENSUBTITLES_API_KEY` environment variable to route through their official maintained API for better results. Manual subtitle import (SRT/ASS/VTT) works everywhere.
 
 ## Data
 

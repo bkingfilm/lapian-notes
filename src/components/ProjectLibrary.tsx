@@ -33,7 +33,7 @@ export function ProjectLibrary(props: ProjectLibraryProps) {
                   <strong data-i18n-ignore>{item.title}</strong>
                   <span>
                     {item.duration ? `片长 ${secondsToTimecode(item.duration)}｜` : ''}
-                    段落 {item.segmentCount}｜时间点 {item.frameCount}
+                    {`段落 ${item.segmentCount}｜时间点 ${item.frameCount}`}
                     {item.updatedAt ? `｜最后编辑 ${formatDate(item.updatedAt)}` : ''}
                   </span>
                 </div>

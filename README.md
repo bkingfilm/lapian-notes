@@ -64,6 +64,8 @@ npm run dev
 浏览器打开终端提示的地址（默认 http://localhost:5173）。
 
 > 注意：自动转码和自动搜索字幕由 dev server 的本地接口提供，必须用 `npm run dev`（或启动脚本）运行才有完整功能。静态部署（`npm run build` 产物）时这两项会降级为手动操作，其余功能不受影响。
+>
+> 自动搜字幕按片名语言自动选源：中文片名走伪射手，外文片名走 OpenSubtitles（都免配置）。可选项：在 [opensubtitles.com](https://www.opensubtitles.com/) 注册免费账号拿 API key，设置环境变量 `OPENSUBTITLES_API_KEY` 后会改走官方维护的新版接口，搜索质量更好。
 
 ## 数据存储
 

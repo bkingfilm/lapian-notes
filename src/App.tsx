@@ -1444,7 +1444,7 @@ export default function App() {
         ref={videoInputRef}
         className="hidden-input"
         type="file"
-        accept="video/*,.mp4,.mov,.mkv,.avi,.webm"
+        accept="video/*,.mp4,.mov,.mkv,.avi,.webm,.rmvb,.rm,.wmv,.flv,.ts"
         onChange={handleVideoSelect}
       />
       <input

@@ -182,7 +182,7 @@ function buildSegmentDeepDivePromptSource(project: Project, segment: Segment, fr
     '4. 其余字段（screenplayDraft、segmentFunction、creativeIntent、informationControl、rhythmDesign、audienceExperience、reusableMethod）针对本段精写。',
     '5. 事实纪律：人物名、地名、身份必须以字幕和画面证据为准，没有证据宁可留空，不要脑补。',
     '6. segmentId、startTime、endTime 必须原样带回，用于导入时定位段落。',
-    '7. 输出语言：所有描述性文本用与字幕相同的语言书写（没有字幕时用影片对白的语言）；screenplayBlocks 的 type 必须原样使用「场景/动作/对白」这些值，不要翻译。',
+    '7. 输出语言：所有描述性文本一律用简体中文书写（引用对白除外，对白保持字幕原文）；screenplayBlocks 的 type 必须原样使用「场景/动作/对白」这些值，不要翻译。',
     '',
     '请严格返回 JSON，不要输出 JSON 之外的说明。顶层必须包含 movieIdentity 和 segmentDeepDive，结构见 schema.json。',
   ].join('\n')
@@ -319,7 +319,7 @@ function buildAiPromptSource(project: Project, looseSheets?: LooseSheetInfo): st
       ? '9. techniques 字段必填：每段至少写一条镜头、剪辑或转场层面的视听手法，从速览拼图里观察构图和景别变化；画面间隔较大，只写有画面证据的。'
       : '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
     // 用户不一定是中文用户,产出语言必须跟片子走,否则英文用户拿到中文笔记没法用
-    '10. 输出语言：所有描述性文本字段（title、screenplayDraft、segmentFunction、keyBeats、techniques 等）必须使用与字幕相同的语言书写；没有字幕时使用影片对白的语言。type、narrativeOrder、importance、剧本小节的 type 等枚举值除外：必须原样使用本说明列出的值，不要翻译。',
+    '10. 输出语言：所有描述性文本字段（title、screenplayDraft、segmentFunction、keyBeats、techniques 等）必须使用简体中文书写。type、narrativeOrder、importance、剧本小节的 type 等枚举值除外：必须原样使用本说明列出的值，不要翻译。',
     '',
     '请严格返回 JSON，不要输出 JSON 之外的说明。JSON 顶层必须包含 movieIdentity 和 segments，可选包含 macroAnalysis、storyLines。',
     'movieIdentity 必须原样带回影片名、项目名和源视频文件名，用于工具导入时校验是否选错电影。',
