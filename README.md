@@ -44,7 +44,7 @@
 
 ### 不懂编程？三步就能用
 
-1. **下载**：点本页面绿色的「Code」按钮，选「Download ZIP」
+1. **下载**：打开[最新版下载页](https://github.com/bkingfilm/lapian-notes/releases/latest)，在「Assets」里点 `lapian-notes-vX.Y.Z.zip` 下载（绿色「Code」按钮里的 Download ZIP 是给开发者的源码快照，普通使用别用那个）
 2. **解压**：双击或右键解压下载的压缩包
 3. **启动**：
    - Windows：双击文件夹里的 `run.bat`

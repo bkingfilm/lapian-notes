@@ -31,6 +31,16 @@ Everything runs locally. Your film and notes never leave your machine. Bring you
 
 ## Quick start
 
+### Not a developer
+
+1. **Download**: open the [latest release](https://github.com/bkingfilm/lapian-notes/releases/latest) and grab `lapian-notes-vX.Y.Z.zip` from the "Assets" list. Don't use the green "Code → Download ZIP" button; that one is a source snapshot for developers.
+2. **Unzip** it anywhere.
+3. **Launch**: on Windows double-click `run.bat`; on macOS double-click `run.command` (first run: Control-click → Open → Open, once only).
+
+The first launch sets up the runtime automatically (no preinstalled Node.js needed, it fetches a portable build, a few minutes), then opens the tool in your browser. Keep the black console window open while you work; closing it quits the tool.
+
+### Developers
+
 Requires Node.js 20.19+ / 22.12+ (the one-click launchers handle this automatically) and a Chromium browser. [ffmpeg](https://ffmpeg.org/) is optional (enables auto-transcoding of RMVB/AVI/HEVC).
 
 ```bash
@@ -38,7 +48,7 @@ npm install
 npm run dev
 ```
 
-Open the printed localhost address. On Windows you can simply double-click `run.bat`; on macOS double-click `run.command` (first run: Control-click → Open).
+Open the printed localhost address.
 
 Automatic subtitle search picks its source by film title: non-Chinese titles search OpenSubtitles (English subtitles, zero setup), Chinese titles search a Chinese subtitle site. Optional: grab a free API key from [opensubtitles.com](https://www.opensubtitles.com/) and set the `OPENSUBTITLES_API_KEY` environment variable to route through their official maintained API for better results. Manual subtitle import (SRT/ASS/VTT) works everywhere.
 
