@@ -50,6 +50,8 @@ npm run dev
 
 Open the printed localhost address.
 
+Running the tests inside `npm run check` additionally requires Node 22.18+. The test files are TypeScript and run straight on Node's built-in type stripping; older versions fail to parse them at all. Development and production builds are not affected.
+
 Automatic subtitle search picks its source by film title: non-Chinese titles search OpenSubtitles (English subtitles, zero setup), Chinese titles search a Chinese subtitle site. Optional: grab a free API key from [opensubtitles.com](https://www.opensubtitles.com/) and set the `OPENSUBTITLES_API_KEY` environment variable to route through their official maintained API for better results. Manual subtitle import (SRT/ASS/VTT) works everywhere.
 
 ## Data

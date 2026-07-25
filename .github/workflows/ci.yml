@@ -8,31 +8,46 @@ on:
 
 jobs:
   check:
+    # tests 目录里是 TypeScript 测试，由 node:test 直接运行，靠 Node 自带的类型剥离。
+    # 该能力从 Node 22.18 起默认开启，更早的版本会把每个 .ts 测试文件整体判为解析失败。
     name: check (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: ['20.19', '22.12']
+        node: ['22.18', '24']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
       - run: npm run check
 
+  build-min:
+    # README 承诺的最低版本只保证装得上依赖、构建得出产物，不跑测试。
+    name: build on minimum node (20.19)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20.19'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
   audit:
+    # 上游随时可能爆新洞，审计结果不阻塞合并，只作提示。
     name: audit (advisory)
     runs-on: ubuntu-latest
-    # 上游随时可能爆新洞，审计结果不阻塞合并，只作提示
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22.12'
+          node-version: '24'
           cache: npm
       - run: npm ci
       - run: npm audit --audit-level=high
