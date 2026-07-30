@@ -5,7 +5,7 @@
 [![下载](https://img.shields.io/github/v/release/bkingfilm/lapian-notes?label=%E4%B8%8B%E8%BD%BD%E6%9C%80%E6%96%B0%E7%89%88&color=2d6cdf)](https://github.com/bkingfilm/lapian-notes/releases/latest)
 [![License](https://img.shields.io/github/license/bkingfilm/lapian-notes?color=green)](LICENSE)
 
-**短网址 [l.bking.film](https://l.bking.film) 直达本页，好记好分享**
+**短网址 [l.bking.film](https://l.bking.film) 直达在线试用版，好记好分享**
 
 **🚀 [在线试用（无需安装）→](https://bkingfilm.github.io/lapian-notes/)** 浏览器直接打开就能用：导入 MP4 抽帧、写笔记、生成 AI 分析包全流程可用。在线版没有本地转码和自动搜字幕（这两项需要下载完整版），其余功能一致，数据同样只存在你自己的浏览器里。
 

@@ -5,7 +5,7 @@
 [![Download](https://img.shields.io/github/v/release/bkingfilm/lapian-notes?label=download&color=2d6cdf)](https://github.com/bkingfilm/lapian-notes/releases/latest)
 [![License](https://img.shields.io/github/license/bkingfilm/lapian-notes?color=green)](LICENSE)
 
-**Short link [l.bking.film](https://l.bking.film) takes you right back here**
+**Short link [l.bking.film](https://l.bking.film) opens the online demo**
 
 **🚀 [Try it online — no install needed →](https://bkingfilm.github.io/lapian-notes/)** The full workflow runs in your browser: import an MP4, extract frames, take notes, generate the AI analysis package. The online demo lacks local transcoding and automatic subtitle search (those need the downloaded version); everything else is identical, and your data stays in your own browser.
 
