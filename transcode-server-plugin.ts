@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { execFile, spawn } from 'node:child_process'
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -12,6 +12,9 @@ import { createHash } from 'node:crypto'
 // POST /api/transcode?filename=..&size=..   body=文件流 → { id }
 // GET  /api/transcode/status?id=..          → { status, percent, videoUrl?, subtitleContent? }
 // GET  /api/transcode/file/<id>.mp4         → 支持 Range 的视频流(video 元素 seek 必需)
+// POST /api/transcode/subtitle?filename=..&size=..  body=文件流 → { subtitleContent? }
+//   只提字幕不转码:浏览器能直接播的 MP4 不走转码,但 mov_text 内嵌字幕轨浏览器读不出,
+//   由这里用 ffmpeg 秒级提取;有无字幕都按"文件名+大小"缓存,同文件重选不再上传
 
 interface TranscodeJob {
   id: string
@@ -34,6 +37,8 @@ export function transcodeServerPlugin(): Plugin {
         try {
           if (req.method === 'POST' && (url.pathname === '/' || url.pathname === '')) {
             handleStart(req, res, url)
+          } else if (req.method === 'POST' && url.pathname === '/subtitle') {
+            handleSubtitleOnly(req, res, url)
           } else if (url.pathname === '/status') {
             handleStatus(res, url.searchParams.get('id') ?? '')
           } else if (url.pathname.startsWith('/file/')) {
@@ -97,6 +102,60 @@ function handleStart(req: IncomingMessage, res: ServerResponse, url: URL) {
   sink.on('finish', () => {
     void runTranscode(job, inputPath, outputPath, subtitlePath)
     respondJson(res, { id })
+  })
+}
+
+// 只提字幕不转码:同步接口,提取是秒级操作,不需要 job 轮询
+function handleSubtitleOnly(req: IncomingMessage, res: ServerResponse, url: URL) {
+  const filename = url.searchParams.get('filename') ?? 'video'
+  const size = url.searchParams.get('size') ?? '0'
+  const id = createHash('md5').update(`${filename}|${size}`).digest('hex').slice(0, 16)
+  mkdirSync(workRoot, { recursive: true })
+  const cachePath = join(workRoot, `${id}-probe.srt`)
+  // 无字幕轨的结论也要缓存,不然同一部片每次重选都要白传一遍几 GB
+  const missPath = join(workRoot, `${id}-probe.none`)
+  if (existsSync(cachePath) && statSync(cachePath).size > 0) {
+    respondJson(res, { subtitleContent: readFileSync(cachePath, 'utf-8') })
+    return
+  }
+  if (existsSync(missPath)) {
+    respondJson(res, {})
+    return
+  }
+
+  const extension = (filename.match(/\.[a-z0-9]{2,5}$/i)?.[0] ?? '.bin').toLowerCase()
+  const inputPath = join(workRoot, `${id}-probe-input${extension}`)
+  const sink = createWriteStream(inputPath)
+  req.pipe(sink)
+  const fail = (message: string) => {
+    rmSync(inputPath, { force: true })
+    if (!res.writableEnded) {
+      res.statusCode = 500
+      res.end(JSON.stringify({ error: message }))
+    }
+  }
+  req.on('error', (error) => fail(`上传中断：${error.message}`))
+  sink.on('error', (error) => fail(`写入临时文件失败：${error.message}`))
+  sink.on('finish', () => {
+    void (async () => {
+      try {
+        const probe = await ffprobe(inputPath)
+        const streamIndex = pickTextSubtitleStream(probe?.streams ?? [])
+        if (streamIndex !== null) {
+          await extractSubtitle(inputPath, streamIndex, cachePath).catch(() => undefined)
+        }
+        if (existsSync(cachePath) && statSync(cachePath).size > 0) {
+          respondJson(res, { subtitleContent: readFileSync(cachePath, 'utf-8') })
+        } else {
+          writeFileSync(missPath, '')
+          respondJson(res, {})
+        }
+      } catch (error) {
+        fail(error instanceof Error ? error.message : String(error))
+      } finally {
+        rmSync(inputPath, { force: true })
+      }
+    })()
   })
 }
 

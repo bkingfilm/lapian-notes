@@ -29,6 +29,20 @@ export function probeVideoPlayable(file: File, timeoutMs = 10000): Promise<boole
   })
 }
 
+// 只提字幕不转码:可播的 MP4 不走转码,但 mov_text 内嵌字幕轨浏览器读不出,
+// 交给 dev server 用 ffmpeg 提取。接口不可用(静态部署)或没有字幕轨时安静返回 null
+export async function extractSubtitleViaServer(file: File, signal?: AbortSignal): Promise<string | null> {
+  const query = new URLSearchParams({ filename: file.name, size: String(file.size) })
+  try {
+    const response = await fetch(`/api/transcode/subtitle?${query}`, { method: 'POST', body: file, signal })
+    if (!response.ok) return null
+    const data = (await response.json().catch(() => null)) as { subtitleContent?: string } | null
+    return data?.subtitleContent || null
+  } catch {
+    return null
+  }
+}
+
 export async function transcodeVideo(
   file: File,
   onProgress: (percent: number) => void,

@@ -37,7 +37,7 @@ export function Toolbar(props: ToolbarProps) {
             href="https://github.com/bkingfilm/lapian-notes/releases/latest"
             target="_blank"
             rel="noreferrer"
-            title="在线版没有本地转码和自动搜字幕，下载完整版获得全自动流程"
+            title="在线版只能导入 MP4 / WebM，字幕需手动导入；下载完整版全自动"
           >
             在线试用版｜下载完整版
           </a>

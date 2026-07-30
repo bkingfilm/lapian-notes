@@ -256,7 +256,7 @@ export function FrameTimeline(props: FrameTimelineProps) {
                 <div className="online-demo-note">
                   <b>你正在使用在线试用版</b>
                   <span>
-                    支持直接导入 MP4 / WebM 影片。和完整版相比，在线版没有本地转码（RMVB / AVI / HEVC 请先转成 MP4 再导入），也没有自动搜字幕（可点上方「导入字幕」手动导入 SRT / ASS / VTT）。
+                    在线版只能导入 MP4 / WebM，别的影片格式处理不了，字幕也需要手动导入。
                   </span>
                   <a href="https://github.com/bkingfilm/lapian-notes/releases/latest" target="_blank" rel="noreferrer">
                     下载完整版，转码和字幕全自动 →

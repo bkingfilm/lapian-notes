@@ -11,6 +11,7 @@ import type {
   Frame,
   Project,
   Segment,
+  Subtitle,
 } from './types'
 import { updateSegmentWithAi, createEmptyProject, createSegmentFromRange, hasMeaningfulProjectContent, normalizeLoadedProject } from './lib/project'
 import { importAiAnalysis, previewAiAnalysisImport } from './lib/aiImport'
@@ -21,7 +22,7 @@ import { buildAiChatMessage, exportAiAnalysisPackage, exportProjectPackage, expo
 import { buildDomesticAiChatMessage, exportDomesticAiPackage } from './lib/domesticAiPackage'
 import { RELEASES_PAGE, checkForUpdate, dismissUpdate } from './lib/updateCheck'
 import { cleanSubtitles, fetchAutoSubtitle } from './lib/autoSubtitle'
-import { probeVideoPlayable, transcodeVideo } from './lib/transcode'
+import { extractSubtitleViaServer, probeVideoPlayable, transcodeVideo } from './lib/transcode'
 import { loadAutosave, markAutosaveSaved, clearAutosave } from './lib/autosave'
 import { clearProjectFrameImages, restoreProjectFrameImages, saveProjectFrameImages } from './lib/frameStore'
 import { deleteLibraryProject, listLibraryProjects, loadLibraryProject, saveProjectToLibrary, type ProjectSummary } from './lib/projectStore'
@@ -760,7 +761,17 @@ export default function App() {
 
     if (typeof videoSource !== 'string' && !nextProject.subtitles.length) {
       try {
-        const embeddedSubtitles = await extractEmbeddedSubtitles(videoSource, controller.signal)
+        // 可播文件不走转码,内嵌字幕先请 dev server 用 ffmpeg 提(mov_text 轨浏览器读不出),
+        // 接口不可用或没提到时再用浏览器 textTracks 兜底
+        let embeddedSubtitles: Subtitle[] = []
+        if (!__ONLINE_DEMO__) {
+          const serverSubtitle = await extractSubtitleViaServer(videoSource, controller.signal)
+          if (controller.signal.aborted || taskAbortRef.current !== controller) return
+          if (serverSubtitle) embeddedSubtitles = cleanSubtitles(parseSubtitle(serverSubtitle))
+        }
+        if (!embeddedSubtitles.length) {
+          embeddedSubtitles = await extractEmbeddedSubtitles(videoSource, controller.signal)
+        }
         if (controller.signal.aborted || taskAbortRef.current !== controller) return
         if (embeddedSubtitles.length) {
           nextProject = {
