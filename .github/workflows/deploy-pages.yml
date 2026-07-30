@@ -29,8 +29,11 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      # 项目页挂在 /lapian-notes/ 子路径下,base 只在这条产线上生效,本地构建不受影响
+      # 项目页挂在 /lapian-notes/ 子路径下,base 只在这条产线上生效,本地构建不受影响;
+      # ONLINE_DEMO=1 让应用显示在线试用版说明与完整版差异
       - run: npm run build -- --base=/lapian-notes/
+        env:
+          ONLINE_DEMO: '1'
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

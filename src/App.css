@@ -2117,6 +2117,54 @@ textarea {
   background: #ffffff;
 }
 
+/* 在线试用版常驻徽标:挂在工具栏品牌区,任何时候都能找到完整版下载入口 */
+.online-demo-badge {
+  padding: 3px 10px;
+  border: 1px solid #bcd6f5;
+  border-radius: 999px;
+  background: #f2f8ff;
+  color: #1d6ae5;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.online-demo-badge:hover {
+  background: #e3f0ff;
+  text-decoration: none;
+}
+
+/* 在线试用版说明块:导入前就讲清和完整版的差异,避免用户拖 RMVB 进来才发现不支持 */
+.online-demo-note {
+  display: grid;
+  gap: 8px;
+  width: min(560px, 100%);
+  padding: 14px 16px;
+  border: 1px solid #bcd6f5;
+  border-radius: 8px;
+  background: #f2f8ff;
+  color: #3a4a5e;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.online-demo-note b {
+  color: #1d4f91;
+  font-size: 14px;
+}
+
+.online-demo-note a {
+  color: #1d6ae5;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.online-demo-note a:hover {
+  text-decoration: underline;
+}
+
 .extract-progress.has-error {
   border-color: #f0b8a8;
   background: #fff7f4;

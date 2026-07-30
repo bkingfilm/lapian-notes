@@ -724,7 +724,11 @@ export default function App() {
         }, controller.signal)
         if (controller.signal.aborted || taskAbortRef.current !== controller) return
         if (!transcoded) {
-          throw new Error('本地转码接口不可用。请确认工具是用 npm run dev 启动的，且本机装有 ffmpeg。')
+          throw new Error(
+            __ONLINE_DEMO__
+              ? '在线试用版不支持自动转码这个格式。请先把影片转成 H.264 MP4 再导入，或点右上角「下载完整版」获得全自动转码。'
+              : '本地转码接口不可用。请确认工具是用 npm run dev 启动的，且本机装有 ffmpeg。',
+          )
         }
         videoSource = transcoded.videoUrl
         videoFileRef.current = transcoded.videoUrl
@@ -790,7 +794,8 @@ export default function App() {
   async function autoPrepareAnalysisPackage(extracted: Project, signal: AbortSignal) {
     let working = extracted
     let subtitleMissNote = ''
-    if (!working.subtitles.length) {
+    // 在线版没有字幕搜索接口,不发注定 404 的请求,也不闪一句"正在搜索"误导用户
+    if (!working.subtitles.length && !__ONLINE_DEMO__) {
       try {
         setStatus('没有内嵌字幕，正在自动搜索网络字幕...')
         // 搜不到的片(尤其外语片名)会把候选逐个试到超时,整体封顶 45 秒别让用户干等

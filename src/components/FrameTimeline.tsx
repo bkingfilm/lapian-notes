@@ -248,9 +248,26 @@ export function FrameTimeline(props: FrameTimelineProps) {
             </div>
           ) : null}
           {!props.hasVideo ? (
-            <span>
-              把影片文件直接拖进这个虚线框，或按上方流程点「导入电影」。之后转码、抽帧、字幕和 AI 分析包都会自动完成。
-            </span>
+            __ONLINE_DEMO__ ? (
+              <>
+                <span>
+                  把影片文件直接拖进这个虚线框，或按上方流程点「导入电影」。之后抽帧和 AI 分析包都会自动完成。
+                </span>
+                <div className="online-demo-note">
+                  <b>你正在使用在线试用版</b>
+                  <span>
+                    支持直接导入 MP4 / WebM 影片。和完整版相比，在线版没有本地转码（RMVB / AVI / HEVC 请先转成 MP4 再导入），也没有自动搜字幕（可点上方「导入字幕」手动导入 SRT / ASS / VTT）。
+                  </span>
+                  <a href="https://github.com/bkingfilm/lapian-notes/releases/latest" target="_blank" rel="noreferrer">
+                    下载完整版，转码和字幕全自动 →
+                  </a>
+                </div>
+              </>
+            ) : (
+              <span>
+                把影片文件直接拖进这个虚线框，或按上方流程点「导入电影」。之后转码、抽帧、字幕和 AI 分析包都会自动完成。
+              </span>
+            )
           ) : null}
         </div>
       ) : (

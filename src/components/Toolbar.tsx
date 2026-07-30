@@ -31,6 +31,17 @@ export function Toolbar(props: ToolbarProps) {
           <span>{'未命名项目'}</span>
         )}
         <button type="button" className="guide-button" onClick={props.onOpenGuide}>? 新手怎么拉片</button>
+        {__ONLINE_DEMO__ ? (
+          <a
+            className="online-demo-badge"
+            href="https://github.com/bkingfilm/lapian-notes/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            title="在线版没有本地转码和自动搜字幕，下载完整版获得全自动流程"
+          >
+            在线试用版｜下载完整版
+          </a>
+        ) : null}
       </div>
       <div className="tool-groups">
         <div className="tool-section">

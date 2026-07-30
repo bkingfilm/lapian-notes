@@ -41,8 +41,12 @@ export function WorkflowGuide(props: WorkflowGuideProps) {
       index: 1,
       title: '导入电影',
       description: props.isTaskRunning
-        ? '正在处理：转码、抽帧、配字幕、打包全自动，等进度条走完即可。'
-        : '选择电影文件。格式不兼容会自动转码，之后自动抽帧、自动配字幕、自动生成 AI 分析包。',
+        ? __ONLINE_DEMO__
+          ? '正在处理：抽帧和打包全自动，等进度条走完即可。'
+          : '正在处理：转码、抽帧、配字幕、打包全自动，等进度条走完即可。'
+        : __ONLINE_DEMO__
+          ? '选择 MP4 / WebM 电影文件，之后自动抽帧、自动生成 AI 分析包。字幕可手动导入。'
+          : '选择电影文件。格式不兼容会自动转码，之后自动抽帧、自动配字幕、自动生成 AI 分析包。',
       state: hasFrames ? 'done' : 'current',
       action: !hasFrames
         ? { label: '导入电影', onClick: props.onImportVideo, disabled: props.isTaskRunning }
