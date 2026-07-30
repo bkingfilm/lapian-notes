@@ -5,6 +5,8 @@
 [![Download](https://img.shields.io/github/v/release/bkingfilm/lapian-notes?label=download&color=2d6cdf)](https://github.com/bkingfilm/lapian-notes/releases/latest)
 [![License](https://img.shields.io/github/license/bkingfilm/lapian-notes?color=green)](LICENSE)
 
+**Short link [l.bking.film](https://l.bking.film) takes you right back here**
+
 Turn a film into an editable shot-by-shot study notebook ("拉片" — the Chinese film-school practice of pulling a film apart scene by scene).
 
 Everything runs locally. Your film and notes never leave your machine. Bring your own AI — no API key required.
