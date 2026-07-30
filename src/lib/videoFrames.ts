@@ -8,6 +8,11 @@ export interface ExtractProgress {
 
 const metadataTimeoutMs = 15000
 const seekTimeoutMs = 12000
+// 每个 worker 是一个独立 <video> 解码器,各抽一段连续区间。串行 seek 时解码器
+// 大部分时间在等 seek 完成,3 路并行在普通机器上就能把吞吐拉满,再多收益递减。
+const maxWorkers = 3
+// 每个 worker 至少分到这么多帧才值得多开一路解码器
+const minFramesPerWorker = 40
 
 export async function extractVideoFrames(
   source: File | string,
@@ -17,51 +22,98 @@ export async function extractVideoFrames(
 ): Promise<{ duration: number; frames: Frame[] }> {
   const isRemoteUrl = typeof source === 'string'
   const videoUrl = isRemoteUrl ? source : URL.createObjectURL(source)
-  const video = document.createElement('video')
-  video.preload = 'metadata'
-  video.muted = true
-  video.src = videoUrl
-  video.playsInline = true
+  // 任一 worker 失败或外部取消时,让其余 worker 立即停下来,不再空转到超时
+  const internal = new AbortController()
+  const onExternalAbort = () => internal.abort()
+  signal?.addEventListener('abort', onExternalAbort, { once: true })
+  if (signal?.aborted) internal.abort()
 
+  const videos: HTMLVideoElement[] = []
   try {
-    throwIfAborted(signal)
-    await waitForEvent(video, 'loadedmetadata', signal, metadataTimeoutMs)
-    const duration = Number.isFinite(video.duration) ? video.duration : 0
+    throwIfAborted(internal.signal)
+    const probe = await createSeekableVideo(videoUrl, internal.signal)
+    videos.push(probe)
+    const duration = Number.isFinite(probe.duration) ? probe.duration : 0
     if (!duration) throw new Error('无法读取视频时长')
 
-    const canvas = document.createElement('canvas')
     // 320 宽足够 AI 认场景和构图,也够时间轴缩略图用;再大只是白占空间和上传流量
-    const width = Math.min(video.videoWidth || 320, 320)
-    const height = Math.round(width / ((video.videoWidth || 16) / (video.videoHeight || 9)))
-    canvas.width = width
-    canvas.height = height
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('无法创建截图画布')
+    const width = Math.min(probe.videoWidth || 320, 320)
+    const height = Math.round(width / ((probe.videoWidth || 16) / (probe.videoHeight || 9)))
 
     const times = buildSampleTimes(duration, interval)
-    const frames: Frame[] = []
+    const workerCount = Math.min(maxWorkers, Math.max(1, Math.floor(times.length / minFramesPerWorker)))
+    while (videos.length < workerCount) {
+      videos.push(await createSeekableVideo(videoUrl, internal.signal))
+    }
+
+    const chunks = splitIntoChunks(times, videos.length)
+    const frames: Frame[] = new Array(times.length)
+    let completed = 0
     onProgress?.({ current: 0, total: times.length, time: 0 })
 
-    for (const [index, time] of times.entries()) {
-      throwIfAborted(signal)
-      video.currentTime = Math.min(time, Math.max(duration - 0.05, 0))
-      await waitForEvent(video, 'seeked', signal, seekTimeoutMs)
-      context.drawImage(video, 0, 0, width, height)
-      const blob = await canvasToJpegBlob(canvas)
-      frames.push({
-        id: `frame_${String(index).padStart(5, '0')}`,
-        index,
-        time,
-        src: URL.createObjectURL(blob),
-      })
-      onProgress?.({ current: index + 1, total: times.length, time })
+    const runChunk = async (video: HTMLVideoElement, chunk: { time: number; index: number }[]) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('无法创建截图画布')
+      for (const item of chunk) {
+        throwIfAborted(internal.signal)
+        video.currentTime = Math.min(item.time, Math.max(duration - 0.05, 0))
+        await waitForEvent(video, 'seeked', internal.signal, seekTimeoutMs)
+        context.drawImage(video, 0, 0, width, height)
+        const blob = await canvasToJpegBlob(canvas)
+        frames[item.index] = {
+          id: `frame_${String(item.index).padStart(5, '0')}`,
+          index: item.index,
+          time: item.time,
+          src: URL.createObjectURL(blob),
+        }
+        completed += 1
+        onProgress?.({ current: completed, total: times.length, time: item.time })
+      }
     }
+
+    await Promise.all(
+      chunks.map((chunk, index) =>
+        runChunk(videos[index], chunk).catch((error) => {
+          internal.abort()
+          throw error
+        }),
+      ),
+    )
 
     return { duration, frames }
   } finally {
-    video.pause()
+    signal?.removeEventListener('abort', onExternalAbort)
+    for (const video of videos) {
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+    }
     if (!isRemoteUrl) URL.revokeObjectURL(videoUrl)
   }
+}
+
+async function createSeekableVideo(url: string, signal?: AbortSignal): Promise<HTMLVideoElement> {
+  const video = document.createElement('video')
+  video.preload = 'metadata'
+  video.muted = true
+  video.playsInline = true
+  video.src = url
+  await waitForEvent(video, 'loadedmetadata', signal, metadataTimeoutMs)
+  return video
+}
+
+// 切成连续区间而不是交错分配:worker 内部保持顺序 seek,解码器不用来回跳 GOP
+function splitIntoChunks(times: number[], workerCount: number): { time: number; index: number }[][] {
+  const items = times.map((time, index) => ({ time, index }))
+  const chunkSize = Math.ceil(items.length / workerCount)
+  const chunks: { time: number; index: number }[][] = []
+  for (let start = 0; start < items.length; start += chunkSize) {
+    chunks.push(items.slice(start, start + chunkSize))
+  }
+  return chunks
 }
 
 function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
