@@ -7,6 +7,8 @@
 
 **Short link [l.bking.film](https://l.bking.film) takes you right back here**
 
+**🚀 [Try it online — no install needed →](https://bkingfilm.github.io/lapian-notes/)** The full workflow runs in your browser: import an MP4, extract frames, take notes, generate the AI analysis package. The online demo lacks local transcoding and automatic subtitle search (those need the downloaded version); everything else is identical, and your data stays in your own browser.
+
 Turn a film into an editable shot-by-shot study notebook ("拉片" — the Chinese film-school practice of pulling a film apart scene by scene).
 
 Everything runs locally. Your film and notes never leave your machine. Bring your own AI — no API key required.

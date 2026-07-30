@@ -1,0 +1,39 @@
+# 在线 demo:把应用本体部署到 GitHub Pages,英文推广时给「30 秒试玩」入口。
+# 静态版没有 dev server 的转码/自动字幕接口,应用内已有降级提示,纯 MP4+手动字幕流程可完整走通。
+name: Deploy demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # 项目页挂在 /lapian-notes/ 子路径下,base 只在这条产线上生效,本地构建不受影响
+      - run: npm run build -- --base=/lapian-notes/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
