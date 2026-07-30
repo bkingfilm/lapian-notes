@@ -5,6 +5,8 @@
 [![下载](https://img.shields.io/github/v/release/bkingfilm/lapian-notes?label=%E4%B8%8B%E8%BD%BD%E6%9C%80%E6%96%B0%E7%89%88&color=2d6cdf)](https://github.com/bkingfilm/lapian-notes/releases/latest)
 [![License](https://img.shields.io/github/license/bkingfilm/lapian-notes?color=green)](LICENSE)
 
+**短网址 [l.bking.film](https://l.bking.film) 直达本页，好记好分享**
+
 把一部电影变成一份可编辑的拉片笔记：本地抽帧、自动配字幕、一键生成 AI 分析包，把 AI 返回的结果导回来，得到剧情泳道时间轴、结构树和观众情绪曲线。
 
 为想系统学习电影叙事的创作者设计。全程本地运行，影片和笔记数据不上传任何服务器。
