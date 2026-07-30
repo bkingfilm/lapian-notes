@@ -117,7 +117,7 @@ export const englishCatalog = {
   "结构图已生成(泳道+情绪曲线),适合直接发社交平台。": "The structure image has been generated (story lanes + emotion curve), ready to post on social media.",
   "继续这个项目": "continue this project",
   "网络字幕：${result.filename}": "Online subtitles: ${result.filename}",
-  "自动保存失败：本地存储空间不足，请手动“保存项目”导出 ZIP。": "Auto-save failed: Insufficient local storage space, please manually \"Save Project\" to export ZIP.",
+  "自动保存失败，请手动“保存项目”导出 ZIP 备份，以免笔记丢失。": "Auto-save failed. Please use \"Save Project\" to export a ZIP backup so your notes are not lost.",
   "自动生成 AI 分析包失败：${error instanceof Error ? error.message : String(error)}。可手动点“生成 AI 分析包”重试。": "Automatic generation of AI analysis package failed: ${error instanceof Error ? error.message : String(error)}. You can manually click \"Generate AI Analysis Package\" to try again.",
   "自动转码失败：${message}": "Automatic transcoding failed: ${message}",
   "补空字段已应用：${parts.join('、')}。": "Blank field applied: ${parts.join('、')}.",

@@ -22,7 +22,7 @@ import { buildDomesticAiChatMessage, exportDomesticAiPackage } from './lib/domes
 import { RELEASES_PAGE, checkForUpdate, dismissUpdate } from './lib/updateCheck'
 import { cleanSubtitles, fetchAutoSubtitle } from './lib/autoSubtitle'
 import { probeVideoPlayable, transcodeVideo } from './lib/transcode'
-import { loadAutosave, saveAutosave, clearAutosave } from './lib/autosave'
+import { loadAutosave, markAutosaveSaved, clearAutosave } from './lib/autosave'
 import { clearProjectFrameImages, restoreProjectFrameImages, saveProjectFrameImages } from './lib/frameStore'
 import { deleteLibraryProject, listLibraryProjects, loadLibraryProject, saveProjectToLibrary, type ProjectSummary } from './lib/projectStore'
 import { getProjectStoryLines } from './lib/storyLines'
@@ -56,17 +56,13 @@ interface FrameRange {
 type ExtractPhase = 'idle' | 'transcode' | 'subtitle' | 'metadata' | 'frames' | 'cache' | 'done' | 'canceled' | 'error'
 
 const DEFAULT_PROJECT_TITLE = '拉片笔记'
-const INITIAL_AUTOSAVE = loadAutosave()
-const INITIAL_PROJECT = INITIAL_AUTOSAVE?.project ?? null
 
 export default function App() {
   const { locale, t } = useI18n()
-  const [project, setProject] = useState<Project>(
-    () => INITIAL_PROJECT ?? createEmptyProject(),
-  )
+  const [project, setProject] = useState<Project>(() => createEmptyProject())
 
   const [status, setStatus] = useState<string>('')
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(() => INITIAL_AUTOSAVE?.savedAt ?? null)
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>({ kind: 'none' })
   const [extractProgress, setExtractProgress] = useState<ExtractProgress | null>(null)
   const [extractError, setExtractError] = useState<string>('')
@@ -78,7 +74,7 @@ export default function App() {
   const [isAiImportOpen, setIsAiImportOpen] = useState(false)
   const [libraryProjects, setLibraryProjects] = useState<ProjectSummary[] | null>(null)
   // 打开页面时若恢复了上次项目,显示一次性欢迎条,告知来源并给出口
-  const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(() => Boolean(INITIAL_PROJECT))
+  const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(false)
   // GitHub 上有更新的版本时提示一行,忽略过的版本不再提
   const [updateTag, setUpdateTag] = useState<string | null>(null)
 
@@ -167,22 +163,33 @@ export default function App() {
   
 
   useEffect(() => {
-    if (!INITIAL_PROJECT) return
-
-    restoreProjectFrameImages(INITIAL_PROJECT)
-      .then(({ project: restoredProject, restoredCount }) => {
-        if (restoredCount > 0) {
-          setProject((current) => ({ ...current, ...restoredProject }))
-          setStatus(`已恢复上次项目，已找回 ${restoredCount} 帧图片。`)
-        }
-      })
-      .catch(() => {
-        setStatus('恢复项目时出现问题，已继续加载文本数据。')
-      })
-      .finally(() => {
-        void tryRestoreVideoHandle(INITIAL_PROJECT)
-      })
-    // INITIAL_PROJECT is a mount-time snapshot; restoration must run only once.
+    let cancelled = false
+    void loadAutosave().then((saved) => {
+      if (cancelled || !saved) return
+      // IndexedDB 读取是异步的,期间用户可能已经开始导入电影,此时不覆盖用户正在做的事
+      if (hasMeaningfulProjectContent(projectRef.current)) return
+      setProject(saved.project)
+      setLastSavedAt(saved.savedAt)
+      setShowWelcomeBack(true)
+      restoreProjectFrameImages(saved.project)
+        .then(({ project: restoredProject, restoredCount }) => {
+          if (cancelled) return
+          if (restoredCount > 0) {
+            setProject((current) => ({ ...current, ...restoredProject }))
+            setStatus(`已恢复上次项目，已找回 ${restoredCount} 帧图片。`)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setStatus('恢复项目时出现问题，已继续加载文本数据。')
+        })
+        .finally(() => {
+          void tryRestoreVideoHandle(saved.project)
+        })
+    })
+    return () => {
+      cancelled = true
+    }
+    // 启动恢复只在挂载时跑一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -193,12 +200,15 @@ export default function App() {
         setLastSavedAt(null)
         return
       }
-      if (saveAutosave(project)) {
-        setLastSavedAt(new Date().toISOString())
-      } else {
-        setStatus('自动保存失败：本地存储空间不足，请手动“保存项目”导出 ZIP。')
-      }
-      void saveProjectToLibrary(project).catch(() => undefined)
+      saveProjectToLibrary(project)
+        .then(() => {
+          const savedAt = new Date().toISOString()
+          markAutosaveSaved(project.id, savedAt)
+          setLastSavedAt(savedAt)
+        })
+        .catch(() => {
+          setStatus('自动保存失败，请手动“保存项目”导出 ZIP 备份，以免笔记丢失。')
+        })
     }, 1000)
     return () => window.clearTimeout(timer)
   }, [project])
