@@ -20,6 +20,7 @@ export interface DirectAiProvider {
 export const DIRECT_AI_PROVIDERS: DirectAiProvider[] = [
   { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-chat', vision: false },
   { id: 'kimi', label: 'Kimi (Moonshot)', baseUrl: 'https://api.moonshot.cn/v1', defaultModel: 'kimi-latest', vision: true },
+  { id: 'gemini', label: 'Gemini (Google)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', defaultModel: 'gemini-2.5-flash', vision: true },
   { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o', vision: true },
   { id: 'claude', label: 'Claude (Anthropic)', baseUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-opus-5', vision: true },
   { id: 'custom', label: '自定义', baseUrl: '', defaultModel: '', vision: true },

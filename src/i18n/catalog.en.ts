@@ -919,7 +919,7 @@ export const englishCatalog = {
   "节奏作用：${text}": "Rhythm role: ${text}",
   "${base} 节奏作用：${rhythm}": "${base} Rhythm role: ${rhythm}",
   "AI 直连分析": "Direct AI analysis",
-  "选用:填自己的 API key(DeepSeek/Kimi/OpenAI/Claude),点一下自动完成分析并导回,不用手动传文件;仅完整版可用": "Optional: enter your own API key (DeepSeek/Kimi/OpenAI/Claude) and finish the analysis in one click, no manual uploads; full version only",
+  "选用:填自己的 API key(DeepSeek/Kimi/Gemini/OpenAI/Claude),点一下自动完成分析并导回,不用手动传文件;仅完整版可用": "Optional: enter your own API key (DeepSeek/Kimi/Gemini/OpenAI/Claude) and finish the analysis in one click, no manual uploads; full version only",
   "填一次你自己的 AI key，点「开始分析」自动完成全片分析，不用再打包上传。key 只存在这台电脑的浏览器里，不会上传到任何服务器。": "Enter your own AI key once, then click \"Start analysis\" to run the full-film analysis automatically — no more packaging and uploading. The key stays in this computer's browser and is never uploaded to any server.",
   "开始分析": "Start analysis",
   "停止": "Stop",

@@ -77,7 +77,7 @@ export function Toolbar(props: ToolbarProps) {
           </button>
           <button
             disabled={!canGenerateAiPackage}
-            title="选用:填自己的 API key(DeepSeek/Kimi/OpenAI/Claude),点一下自动完成分析并导回,不用手动传文件;仅完整版可用"
+            title="选用:填自己的 API key(DeepSeek/Kimi/Gemini/OpenAI/Claude),点一下自动完成分析并导回,不用手动传文件;仅完整版可用"
             onClick={props.onOpenDirectAi}
           >
             AI 直连分析
