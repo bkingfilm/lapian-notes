@@ -67,7 +67,8 @@ export function buildDomesticAiChatMessage(hasSubtitles: boolean, locale: Locale
   )
 }
 
-async function buildContactSheets(
+// AI 直连模式复用同一套拼图:能看图的模型直接收 base64 拼图
+export async function buildContactSheets(
   frames: Frame[],
   duration: number,
 ): Promise<{ sheets: Blob[]; tileIntervalSeconds: number }> {

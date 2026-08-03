@@ -31,6 +31,8 @@ Everything runs locally. Your film and notes never leave your machine. Bring you
 
 > **Using an AI that rejects ZIP uploads (common with Chinese models like Kimi / Doubao / Qwen / DeepSeek)?** Click the "No-ZIP export (CN AI apps)" button next to the package button: it exports plain files instead — a task brief, subtitles and timecoded contact-sheet images — which you upload directly. Everything else works the same.
 
+> **Don't want to upload files at all?** Click "Direct AI analysis": enter your own API key once (DeepSeek / Kimi / OpenAI / Claude, or any OpenAI-compatible endpoint) and the full-film analysis runs and imports back in one click. The key stays in your local browser and token costs go to your own account. Full (local) version only — not available in the online demo.
+
 > **Note: free-tier AI may "cut corners".** A film sampled at one frame per second yields 6000 to 8000 images, often beyond free quotas. Instead of saying so, the AI may silently look at only a few frames from the beginning, middle and end, returning a suspiciously thin analysis. If that happens, ask it to "fully extract the ZIP and analyze every segment per prompt.md, no sampling", or retry with a paid tier or another AI.
 
 ## Quick start

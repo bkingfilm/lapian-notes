@@ -10,6 +10,7 @@ interface ToolbarProps {
   onSubtitle: () => void
   onGenerateAiPackage: () => void
   onGenerateDomesticAiPackage: () => void
+  onOpenDirectAi: () => void
   onImportAiResult: () => void
   onExportMarkdown: () => void
   onExportScreenplay: () => void
@@ -72,6 +73,14 @@ export function Toolbar(props: ToolbarProps) {
             onClick={props.onGenerateDomesticAiPackage}
           >
             国内 AI 免压缩包版
+            <small className="optional-tag">选用</small>
+          </button>
+          <button
+            disabled={!canGenerateAiPackage}
+            title="选用:填自己的 API key(DeepSeek/Kimi/OpenAI/Claude),点一下自动完成分析并导回,不用手动传文件;仅完整版可用"
+            onClick={props.onOpenDirectAi}
+          >
+            AI 直连分析
             <small className="optional-tag">选用</small>
           </button>
         </div>

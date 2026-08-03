@@ -282,17 +282,28 @@ export interface LooseSheetInfo {
   tileIntervalSeconds: number
 }
 
-export function buildAiPrompt(project: Project, locale: Locale = 'zh-CN', looseSheets?: LooseSheetInfo): string {
+// direct 模式给 AI 直连(BYOK)用:任务说明和材料都在同一条消息里,不存在"上传的文件"。
+// direct + looseSheets = 消息附带画面拼图;direct 无 looseSheets = 纯字幕分析(文本模型)。
+export function buildAiPrompt(
+  project: Project,
+  locale: Locale = 'zh-CN',
+  looseSheets?: LooseSheetInfo,
+  direct = false,
+): string {
   const localizer = createGeneratedTextLocalizer(locale)
   const protectedProject = protectProjectAuthoredText(project, localizer.protect)
-  return localizer.localize(buildAiPromptSource(protectedProject, looseSheets))
+  return localizer.localize(buildAiPromptSource(protectedProject, looseSheets, direct))
 }
 
-function buildAiPromptSource(project: Project, looseSheets?: LooseSheetInfo): string {
+function buildAiPromptSource(project: Project, looseSheets?: LooseSheetInfo, direct = false): string {
   return [
-    looseSheets
-      ? '你是一名电影剧本拆解助手。我上传的文件是一部电影的分析材料：任务说明（本文件）、画面速览拼图，可能还有字幕全文。请据此把电影整理成“拉片笔记”能导入的 JSON。'
-      : '你是一名电影剧本拆解助手。请读取这个压缩包中的截图、字幕和资料，把电影整理成“拉片笔记”能导入的 JSON。',
+    direct
+      ? (looseSheets
+          ? '你是一名电影剧本拆解助手。本条消息包含一部电影的分析材料：任务说明（本段文字）、随消息附上的画面速览拼图，可能还有字幕全文。请据此把电影整理成“拉片笔记”能导入的 JSON。'
+          : '你是一名电影剧本拆解助手。本条消息只包含任务说明和字幕全文，没有画面截图。请完全依据字幕把电影整理成“拉片笔记”能导入的 JSON。')
+      : looseSheets
+        ? '你是一名电影剧本拆解助手。我上传的文件是一部电影的分析材料：任务说明（本文件）、画面速览拼图，可能还有字幕全文。请据此把电影整理成“拉片笔记”能导入的 JSON。'
+        : '你是一名电影剧本拆解助手。请读取这个压缩包中的截图、字幕和资料，把电影整理成“拉片笔记”能导入的 JSON。',
     ...(looseSheets
       ? [
           '',
@@ -306,18 +317,22 @@ function buildAiPromptSource(project: Project, looseSheets?: LooseSheetInfo): st
     '3. 每个段落必须写“故事总结”：概括这一段发生了什么，不要直接复制字幕原文。',
     '4. 每个段落必须写“作用”：评价这一段在整部影片结构、人物关系、信息释放和节奏中的作用。',
     '5. 结构树应区分主线、支线、情感线、信息线、节奏/过渡线；允许同一段属于多条线。',
-    project.subtitles.length
-      ? (looseSheets
-          ? '6. 每段请结合字幕全文和速览拼图里对应时间码的画面判断剧情。'
-          : '6. 每段请参考 frames/ 中起点、中点、终点附近的画面，并结合 subtitles.srt 判断剧情。')
-      : (looseSheets
-          ? '6. 没有字幕：对白无法获得，请完全依靠速览拼图的画面判断剧情，无法确认的对白内容不要编造。'
-          : '6. 本包没有字幕：对白无法获得，请完全依靠 frames/ 画面截图判断剧情，无法确认的对白内容不要编造。'),
+    direct && !looseSheets
+      ? '6. 没有画面：请完全依靠字幕判断剧情，无法从字幕确认的画面内容不要编造。'
+      : project.subtitles.length
+        ? (looseSheets
+            ? '6. 每段请结合字幕全文和速览拼图里对应时间码的画面判断剧情。'
+            : '6. 每段请参考 frames/ 中起点、中点、终点附近的画面，并结合 subtitles.srt 判断剧情。')
+        : (looseSheets
+            ? '6. 没有字幕：对白无法获得，请完全依靠速览拼图的画面判断剧情，无法确认的对白内容不要编造。'
+            : '6. 本包没有字幕：对白无法获得，请完全依靠 frames/ 画面截图判断剧情，无法确认的对白内容不要编造。'),
     '7. 事实纪律：人物名、地名、身份、故事发生地等设定必须以字幕和画面证据为准，没有证据就不要写；宁可留空，不要脑补。',
     '8. keyBeats 里每个节拍前面标注时间码（如“52:30 小鱼提出同住”），方便人工回看核对。',
-    looseSheets
-      ? '9. techniques 字段必填：每段至少写一条镜头、剪辑或转场层面的视听手法，从速览拼图里观察构图和景别变化；画面间隔较大，只写有画面证据的。'
-      : '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
+    direct && !looseSheets
+      ? '9. techniques 字段：没有画面可看，只写能从对白和声音节奏推断的手法；没有把握就留空，不要编造镜头描述。'
+      : looseSheets
+        ? '9. techniques 字段必填：每段至少写一条镜头、剪辑或转场层面的视听手法，从速览拼图里观察构图和景别变化；画面间隔较大，只写有画面证据的。'
+        : '9. techniques 字段必填：每段至少写一条镜头、剪辑、声音或转场层面的视听手法，从 frames/ 截图里观察构图和景别变化。',
     // 用户不一定是中文用户,产出语言必须跟片子走,否则英文用户拿到中文笔记没法用
     '10. 输出语言：所有描述性文本字段（title、screenplayDraft、segmentFunction、keyBeats、techniques 等）必须使用简体中文书写。type、narrativeOrder、importance、剧本小节的 type 等枚举值除外：必须原样使用本说明列出的值，不要翻译。',
     '',
@@ -366,10 +381,12 @@ function buildAiPromptSource(project: Project, looseSheets?: LooseSheetInfo): st
     `片长：${project.duration} 秒`,
     ...(looseSheets
       ? [`画面速览拼图：${looseSheets.sheetCount} 张，截图间隔约 ${looseSheets.tileIntervalSeconds} 秒`]
-      : [`抽帧间隔：${project.frameInterval} 秒`, `帧数量：${project.frames.length}`]),
+      : direct
+        ? []
+        : [`抽帧间隔：${project.frameInterval} 秒`, `帧数量：${project.frames.length}`]),
     `字幕数量：${project.subtitles.length}`,
-    // 免压缩包模式没有独立的 schema.json,结构示例直接附在任务说明末尾
-    ...(looseSheets
+    // 免压缩包模式和直连模式没有独立的 schema.json,结构示例直接附在任务说明末尾
+    ...(looseSheets || direct
       ? ['', '返回 JSON 的结构示例（严格按这个结构，字段要求写在示例值里）：', JSON.stringify(buildAiSchema(), null, 2)]
       : []),
   ].filter(Boolean).join('\n')

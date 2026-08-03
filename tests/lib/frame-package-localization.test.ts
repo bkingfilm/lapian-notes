@@ -22,7 +22,7 @@ test('package APIs accept optional locale parameters with Chinese defaults', () 
 test('generated package prose protects authored values before localization', () => {
   assert.match(source, /protectProjectAuthoredText\(project, localizer\.protect\)/)
   assert.match(source, /protectSegmentAuthoredText\(segment, localizer\.protect\)/)
-  assert.match(source, /localizer\.localize\(buildAiPromptSource\(protectedProject, looseSheets\)\)/)
+  assert.match(source, /localizer\.localize\(buildAiPromptSource\(protectedProject, looseSheets, direct\)\)/)
   assert.match(source, /buildSegmentDeepDivePromptSource\(protectedProject, protectedSegment/)
 })
 

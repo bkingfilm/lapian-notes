@@ -19,7 +19,10 @@ import { extractVideoFrames } from './lib/videoFrames'
 import { parseSubtitle } from './lib/srt'
 import { extractEmbeddedSubtitles } from './lib/videoSubtitles'
 import { buildAiChatMessage, exportAiAnalysisPackage, exportProjectPackage, exportSegmentDeepDivePackage, importProjectPackage } from './lib/framePackage'
-import { buildDomesticAiChatMessage, exportDomesticAiPackage } from './lib/domesticAiPackage'
+import { buildContactSheets, buildDomesticAiChatMessage, exportDomesticAiPackage } from './lib/domesticAiPackage'
+import { buildDirectAiMessages, runDirectAiAnalysis } from './lib/directAi'
+import type { DirectAiConfig } from './lib/directAi'
+import { DirectAiModal } from './components/DirectAiModal'
 import { RELEASES_PAGE, checkForUpdate, dismissUpdate } from './lib/updateCheck'
 import { cleanSubtitles, fetchAutoSubtitle } from './lib/autoSubtitle'
 import { extractSubtitleViaServer, probeVideoPlayable, transcodeVideo } from './lib/transcode'
@@ -71,6 +74,10 @@ export default function App() {
   const [markdownPreview, setMarkdownPreview] = useState<string | null>(null)
   const [aiImportText, setAiImportText] = useState('')
   const [isAiImportOpen, setIsAiImportOpen] = useState(false)
+  // AI 直连(BYOK):弹窗开关、进行中的请求、弹窗内状态行
+  const [isDirectAiOpen, setIsDirectAiOpen] = useState(false)
+  const [directAiAbort, setDirectAiAbort] = useState<AbortController | null>(null)
+  const [directAiStatus, setDirectAiStatus] = useState('')
   const [libraryProjects, setLibraryProjects] = useState<ProjectSummary[] | null>(null)
   // 打开页面时若恢复了上次项目,显示一次性欢迎条,告知来源并给出口
   const [showWelcomeBack, setShowWelcomeBack] = useState<boolean>(false)
@@ -416,6 +423,63 @@ export default function App() {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       setStatus(`生成 AI 分析材料失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  // AI 直连:抽帧/拼图 → 组消息 → 走本地转发调用户自己的 AI → 结果灌进"导入 AI 结果"预览
+  async function handleRunDirectAi(config: DirectAiConfig) {
+    if (!project.sourceVideoName) {
+      setDirectAiStatus('请先导入电影。')
+      return
+    }
+    if (extractAbort || analysisAbort || directAiAbort) {
+      setDirectAiStatus('当前有正在进行的任务。')
+      return
+    }
+
+    const abort = new AbortController()
+    setDirectAiAbort(abort)
+    try {
+      let sourceProject = project
+      let sheets: { blobs: Blob[]; info: { sheetCount: number; tileIntervalSeconds: number } } | undefined
+      if (config.sendFrames) {
+        if (!sourceProject.frames.length) {
+          setDirectAiStatus('正在按 1 秒间隔抽帧，准备画面拼图...')
+          const rebuilt = await startExtractFrames(true, { ...sourceProject, frameInterval: 1 }, 1)
+          if (!rebuilt) {
+            setDirectAiStatus('抽帧未完成，已取消。')
+            return
+          }
+          sourceProject = rebuilt
+        }
+        setDirectAiStatus('正在生成画面速览拼图...')
+        const built = await buildContactSheets(
+          sourceProject.frames.filter((frame) => frame.src),
+          sourceProject.duration,
+        )
+        sheets = { blobs: built.sheets, info: { sheetCount: built.sheets.length, tileIntervalSeconds: built.tileIntervalSeconds } }
+      } else if (!sourceProject.subtitles.length) {
+        setDirectAiStatus('纯字幕分析需要先导入字幕。')
+        return
+      }
+
+      setDirectAiStatus('已发送给 AI，分析中（全片分析通常要 1 到 5 分钟，请别关页面）...')
+      const messages = await buildDirectAiMessages(sourceProject, locale, sheets)
+      const resultText = await runDirectAiAnalysis(config, messages, locale, abort.signal)
+
+      setAiImportText(resultText)
+      setIsAiImportOpen(true)
+      setIsDirectAiOpen(false)
+      setDirectAiStatus('')
+      setStatus('AI 直连分析完成。请确认预览后点“应用结果”。')
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setDirectAiStatus('已停止。')
+        return
+      }
+      setDirectAiStatus(`分析失败：${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setDirectAiAbort(null)
     }
   }
 
@@ -1386,6 +1450,10 @@ export default function App() {
         onSubtitle={() => subtitleInputRef.current?.click()}
         onGenerateAiPackage={handleGenerateAiPackage}
         onGenerateDomesticAiPackage={() => void handleGenerateDomesticAiPackage()}
+        onOpenDirectAi={() => {
+          setDirectAiStatus('')
+          setIsDirectAiOpen(true)
+        }}
         onImportAiResult={() => aiResultInputRef.current?.click()}
         onExportMarkdown={handleExportMarkdown}
         onExportScreenplay={handleExportScreenplayText}
@@ -1576,6 +1644,20 @@ export default function App() {
             <pre>{markdownPreview}</pre>
           </div>
         </section>
+      ) : null}
+
+      {isDirectAiOpen ? (
+        <DirectAiModal
+          hasSubtitles={project.subtitles.length > 0}
+          running={Boolean(directAiAbort)}
+          statusText={directAiStatus}
+          onRun={(config) => void handleRunDirectAi(config)}
+          onCancel={() => directAiAbort?.abort()}
+          onClose={() => {
+            setIsDirectAiOpen(false)
+            setDirectAiStatus('')
+          }}
+        />
       ) : null}
 
       {isAiImportOpen ? (
