@@ -16,11 +16,12 @@ export interface DirectAiProvider {
   vision: boolean
 }
 
-// 预设的 baseUrl/model 会过时,全部允许用户改;自定义档从零填
+// 预设的 baseUrl/model 会过时,全部允许用户改;自定义档从零填。
+// 刻意不预设 DeepSeek 等纯文本模型:看不了画面,拆视觉型影片时 techniques/无对白段落/情绪曲线全瞎,
+// 预设进来等于引导用户用残血模式。确实要用的走「自定义」+取消勾选拼图,工具会退到纯字幕分析。
 export const DIRECT_AI_PROVIDERS: DirectAiProvider[] = [
-  { id: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-chat', vision: false },
-  { id: 'kimi', label: 'Kimi (Moonshot)', baseUrl: 'https://api.moonshot.cn/v1', defaultModel: 'kimi-latest', vision: true },
   { id: 'gemini', label: 'Gemini (Google)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', defaultModel: 'gemini-2.5-flash', vision: true },
+  { id: 'kimi', label: 'Kimi (Moonshot)', baseUrl: 'https://api.moonshot.cn/v1', defaultModel: 'kimi-latest', vision: true },
   { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o', vision: true },
   { id: 'claude', label: 'Claude (Anthropic)', baseUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-opus-5', vision: true },
   { id: 'custom', label: '自定义', baseUrl: '', defaultModel: '', vision: true },
@@ -41,7 +42,8 @@ export function loadDirectAiConfig(): DirectAiConfig {
     const raw = localStorage.getItem(CONFIG_STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<DirectAiConfig>
-      if (typeof parsed.providerId === 'string') {
+      // 存过的服务商可能已被移出预设(如 DeepSeek),回落默认档
+      if (typeof parsed.providerId === 'string' && DIRECT_AI_PROVIDERS.some((item) => item.id === parsed.providerId)) {
         return {
           providerId: parsed.providerId,
           baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : '',

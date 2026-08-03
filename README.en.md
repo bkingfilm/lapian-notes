@@ -31,7 +31,9 @@ Everything runs locally. Your film and notes never leave your machine. Bring you
 
 > **Using an AI that rejects ZIP uploads (common with Chinese models like Kimi / Doubao / Qwen / DeepSeek)?** Click the "No-ZIP export (CN AI apps)" button next to the package button: it exports plain files instead — a task brief, subtitles and timecoded contact-sheet images — which you upload directly. Everything else works the same.
 
-> **Don't want to upload files at all?** Click "Direct AI analysis": enter your own API key once (DeepSeek / Kimi / Gemini / OpenAI / Claude, or any OpenAI-compatible endpoint) and the full-film analysis runs and imports back in one click. The key stays in your local browser and token costs go to your own account. Full (local) version only — not available in the online demo.
+> **Don't want to upload files at all?** Click "Direct AI analysis": enter your own API key once (presets for Gemini / Kimi / OpenAI / Claude, or use "Custom" for any OpenAI-compatible endpoint) and the full-film analysis runs and imports back in one click. The key stays in your local browser and token costs go to your own account. Full (local) version only — not available in the online demo.
+>
+> Why no DeepSeek preset? It is a text-only model and cannot see images. Film breakdown lives on the visuals — cinematography notes, dialogue-free passages and the emotion curve all need frames — so subtitles-only analysis degrades noticeably on visual films, and shipping it as a preset would quietly steer people into a crippled mode. If you still want it, pick "Custom", enter `https://api.deepseek.com` and uncheck "Attach frame contact sheets"; the tool falls back to subtitles-only analysis, which is serviceable for dialogue-heavy films.
 
 > **Note: free-tier AI may "cut corners".** A film sampled at one frame per second yields 6000 to 8000 images, often beyond free quotas. Instead of saying so, the AI may silently look at only a few frames from the beginning, middle and end, returning a suspiciously thin analysis. If that happens, ask it to "fully extract the ZIP and analyze every segment per prompt.md, no sampling", or retry with a paid tier or another AI.
 
