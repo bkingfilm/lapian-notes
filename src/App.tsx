@@ -25,6 +25,7 @@ import type { DirectAiConfig } from './lib/directAi'
 import { DirectAiModal } from './components/DirectAiModal'
 import { RELEASES_PAGE, checkForUpdate, dismissUpdate } from './lib/updateCheck'
 import { cleanSubtitles, fetchAutoSubtitle } from './lib/autoSubtitle'
+import { lastSubtitleEndSeconds, subtitleOverhangSeconds, trimSubtitlesToDuration } from './lib/subtitleGate'
 import { extractSubtitleViaServer, probeVideoPlayable, transcodeVideo } from './lib/transcode'
 import { loadAutosave, markAutosaveSaved, clearAutosave } from './lib/autosave'
 import { clearProjectFrameImages, restoreProjectFrameImages, saveProjectFrameImages } from './lib/frameStore'
@@ -618,6 +619,15 @@ export default function App() {
       setStatus(`抽帧完成，已生成 ${result.frames.length} 个时间点。`)
       clearFrameRange()
 
+      // 内嵌提取的字幕没走自动搜索线的片长闸门,在片长已知的此刻补一道:
+      // 字幕明显长过影片(拉错版本,或影片只是片段却带全片字幕)会把台词密度和时间轴显示全部拉花
+      const trimmed = confirmTrimOverlongSubtitles(next.subtitles, next.duration)
+      if (trimmed) {
+        next = { ...next, subtitles: trimmed, updatedAt: new Date().toISOString() }
+        setProject((current) => (current.id === next.id ? next : current))
+        setStatus(`已裁掉影片时长之外的字幕，保留 ${trimmed.length} 条。`)
+      }
+
       if (controller.signal.aborted || taskAbortRef.current !== controller) {
         throw new DOMException('已取消生成时间轴', 'AbortError')
       }
@@ -916,6 +926,17 @@ export default function App() {
     setStatus(`${saved === 'saved' ? 'AI 分析包已保存。' : 'AI 分析包已生成，请在浏览器完成下载。'}${subtitleNote}${copyHint}完成后把 AI 返回的 JSON 导入回来。`)
   }
 
+  // 字幕明显长过影片时问一声要不要裁,同一句确认文案供内嵌提取和手动导入两条路复用;
+  // 返回 null 表示不需要裁或用户选择保留
+  function confirmTrimOverlongSubtitles(subtitles: Subtitle[], duration: number): Subtitle[] | null {
+    if (subtitleOverhangSeconds(subtitles, duration) === null) return null
+    const lastEnd = lastSubtitleEndSeconds(subtitles)
+    const trim = window.confirm(
+      `字幕比影片长很多：字幕到 ${secondsToTimecode(lastEnd)}，影片只有 ${secondsToTimecode(duration)}，可能是字幕版本不对，或影片只是片段。要裁掉影片时长之外的字幕吗？保留的话台词密度等显示会被拉长。`,
+    )
+    return trim ? trimSubtitlesToDuration(subtitles, duration) : null
+  }
+
   async function handleSubtitleImport(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -925,10 +946,11 @@ export default function App() {
     }
     try {
       const text = await readSubtitleFile(file)
-      const subtitles = parseSubtitle(text)
+      let subtitles = parseSubtitle(text)
       if (!subtitles.length) {
         throw new Error('没有识别到有效字幕，请确认文件是 SRT、ASS、SSA 或 VTT 格式。')
       }
+      subtitles = confirmTrimOverlongSubtitles(subtitles, project.duration) ?? subtitles
       const projectWithSubtitles = {
         ...project,
         subtitles,
