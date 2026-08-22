@@ -785,6 +785,7 @@ export const englishCatalog = {
   "本地转码失败": "Local transcoding failed",
   "${phase}超时。浏览器可能不支持这个影片格式或编码，请优先转成 H.264/AAC 的 MP4 后再导入。": "${phase} timed out. The browser may not support this video format or encoding. Please convert it to H.264/AAC MP4 before importing.",
   "无法创建截图画布": "Unable to create screenshot canvas",
+  "开头连续 ${count} 帧抽出来都是纯黑，浏览器多半解不出这个片源的画面。HEVC/H.265、AV1、10bit HDR 这类编码常见读得到时长却解不出图像。请先转成 H.264/AAC 的 MP4 再导入。": "The first ${count} frames all came out pure black, so the browser most likely cannot decode this video. HEVC/H.265, AV1 and 10-bit HDR sources often report a duration but render no image. Please convert it to H.264/AAC MP4 before importing.",
   "无法生成截图": "Unable to generate screenshot",
   "无法读取视频时长": "Unable to read video duration",
   "视频读取失败。浏览器可能不支持这个影片格式或编码，请优先转成 H.264/AAC 的 MP4 后再导入。": "Video read failed. The browser may not support this video format or encoding. Please convert it to H.264/AAC MP4 before importing.",

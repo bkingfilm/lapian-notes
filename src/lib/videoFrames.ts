@@ -13,6 +13,11 @@ const seekTimeoutMs = 12000
 const maxWorkers = 3
 // 每个 worker 至少分到这么多帧才值得多开一路解码器
 const minFramesPerWorker = 40
+// 浏览器解不出画面时 drawImage 不报错,只是画出纯黑,一路抽到七千帧才发现白等一场。
+// 开头这些帧全是纯黑就当场停下。取 30 帧是为了躲开片头黑场,黑底白字的 logo 段
+// 会被最亮像素判定放过,只有真·全 0 的帧才算黑。
+const blackProbeFrames = 30
+const blackLumaThreshold = 2
 
 export async function extractVideoFrames(
   source: File | string,
@@ -51,17 +56,33 @@ export async function extractVideoFrames(
     let completed = 0
     onProgress?.({ current: 0, total: times.length, time: 0 })
 
-    const runChunk = async (video: HTMLVideoElement, chunk: { time: number; index: number }[]) => {
+    const runChunk = async (
+      video: HTMLVideoElement,
+      chunk: { time: number; index: number }[],
+      chunkIndex: number,
+    ) => {
       const canvas = document.createElement('canvas')
       canvas.width = width
       canvas.height = height
-      const context = canvas.getContext('2d')
+      // 只有抽开头那一路要逐帧读像素查黑屏,其余几路不必开这个模式
+      const context = canvas.getContext('2d', { willReadFrequently: chunkIndex === 0 })
       if (!context) throw new Error('无法创建截图画布')
+      // 黑屏探测只在负责影片开头的那一路上做,判定完就不再读像素
+      const probeLimit = chunkIndex === 0 ? Math.min(blackProbeFrames, chunk.length) : 0
+      let probed = 0
       for (const item of chunk) {
         throwIfAborted(internal.signal)
         video.currentTime = Math.min(item.time, Math.max(duration - 0.05, 0))
         await waitForEvent(video, 'seeked', internal.signal, seekTimeoutMs)
         context.drawImage(video, 0, 0, width, height)
+        if (probed < probeLimit) {
+          if (isBlackFrame(context, width, height)) {
+            probed += 1
+            if (probed >= probeLimit) throw createAllBlackFramesError(probeLimit)
+          } else {
+            probed = probeLimit
+          }
+        }
         const blob = await canvasToJpegBlob(canvas)
         frames[item.index] = {
           id: `frame_${String(item.index).padStart(5, '0')}`,
@@ -76,7 +97,7 @@ export async function extractVideoFrames(
 
     await Promise.all(
       chunks.map((chunk, index) =>
-        runChunk(videos[index], chunk).catch((error) => {
+        runChunk(videos[index], chunk, index).catch((error) => {
           internal.abort()
           throw error
         }),
@@ -114,6 +135,39 @@ function splitIntoChunks(times: number[], workerCount: number): { time: number; 
     chunks.push(items.slice(start, start + chunkSize))
   }
   return chunks
+}
+
+// 解码失败画出来的是全 0 的纯黑,所以按最亮像素判,别用平均亮度:
+// 平均亮度会把黑底白字的片头 logo 也算成黑帧。
+function isBlackFrame(context: CanvasRenderingContext2D, width: number, height: number): boolean {
+  try {
+    return isBlackPixelData(context.getImageData(0, 0, width, height).data)
+  } catch {
+    // 跨源画面会污染 canvas,读不出像素就当它不黑,不拦
+    return false
+  }
+}
+
+// 每 16 个像素采一个点,320x180 也有三千多个采样点,够判整帧是不是纯黑
+export function isBlackPixelData(data: Uint8ClampedArray | number[]): boolean {
+  for (let i = 0; i < data.length; i += 64) {
+    if (
+      data[i] > blackLumaThreshold ||
+      data[i + 1] > blackLumaThreshold ||
+      data[i + 2] > blackLumaThreshold
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+function createAllBlackFramesError(count: number) {
+  return new Error(
+    `开头连续 ${count} 帧抽出来都是纯黑，浏览器多半解不出这个片源的画面。` +
+      `HEVC/H.265、AV1、10bit HDR 这类编码常见读得到时长却解不出图像。` +
+      `请先转成 H.264/AAC 的 MP4 再导入。`,
+  )
 }
 
 function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
