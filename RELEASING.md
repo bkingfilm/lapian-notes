@@ -74,7 +74,7 @@ Get-FileHash lapian-notes-vX.Y.Z.zip -Algorithm SHA256
 
 ## 9. 发布
 
-在 Release 页面上传 `lapian-notes-vX.Y.Z.zip`，正文写清这一版改了什么。
+在 Release 页面上传 `lapian-notes-vX.Y.Z.zip`，正文写清这一版改了什么，文案按 `docs/voice.md` 的风格写。
 
 README 只让用户下载这个附件，绿色 Code 按钮的源码快照不算发布产物，也不计入下载数。
 
