@@ -1,0 +1,43 @@
+name: Windows startup
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  startup:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.20.0'
+      - name: Parser regression tests (Windows PowerShell 5.1)
+        shell: powershell
+        run: ./scripts/test-windows-startup.ps1
+      - name: Install and launch with colored output
+        shell: powershell
+        env:
+          FORCE_COLOR: '1'
+        run: |
+          & powershell -NoProfile -ExecutionPolicy Bypass -File ./setup.ps1 -test
+          if ($LASTEXITCODE -ne 0) { throw 'First launch failed' }
+          $firstLog = Get-Content server.log -Raw
+          Write-Host $firstLog
+          if ($firstLog -notmatch '5173') { throw 'Expected first server on 5173' }
+          # Keep the first instance alive to exercise automatic port fallback.
+          & powershell -NoProfile -ExecutionPolicy Bypass -File ./setup.ps1 -test
+          if ($LASTEXITCODE -ne 0) { throw 'Occupied-port launch failed' }
+          $secondLog = Get-Content server.log -Raw
+          Write-Host $secondLog
+          if ($secondLog -notmatch '5174') { throw 'Expected second server on 5174' }
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-startup-logs
+          path: |
+            install.log
+            server.log
+            server-err.log
