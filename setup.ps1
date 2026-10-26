@@ -6,6 +6,15 @@ Set-Location $PSScriptRoot
 
 function Say($msg) { Write-Host $msg }
 
+function Get-AppUrl([string]$LogText) {
+  # Vite may insert ANSI styling between the hostname, port and slash.
+  $plain = $LogText -replace "$([char]27)\[[0-?]*[ -/]*[@-~]", ''
+  if ($plain -match 'http://localhost:(\d+)/') {
+    return "http://localhost:$($Matches[1])/"
+  }
+  return $null
+}
+
 # 界面语言是中文的系统优先国内镜像,其它系统优先官方源(海外用户走 npmmirror 会绕远路)
 $prefersChina = [System.Globalization.CultureInfo]::CurrentUICulture.Name -like 'zh*'
 
@@ -103,18 +112,33 @@ $proc = Start-Process $nodeExe -ArgumentList "`"$vite`" --port 5173" -WorkingDir
 #    不能写死 5173(否则服务明明活着,这里却会误报启动失败)。
 $ready = $false
 $appUrl = $null
+$lastProbeError = $null
 for ($i = 0; $i -lt 90; $i++) {
   if (-not $appUrl) {
     $logText = Get-Content $serverLog -Raw -ErrorAction SilentlyContinue
-    if ($logText -match 'http://localhost:(\d+)/') { $appUrl = "http://localhost:$($Matches[1])/" }
+    $appUrl = Get-AppUrl $logText
   }
   if ($appUrl) {
-    try { Invoke-WebRequest $appUrl -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop | Out-Null; $ready = $true; break } catch {}
+    try {
+      $request = [System.Net.WebRequest]::Create($appUrl)
+      $request.Proxy = $null
+      $request.Timeout = 2000
+      $response = $request.GetResponse()
+      $response.Close()
+      $ready = $true
+      break
+    } catch {
+      $lastProbeError = $_.Exception.Message
+    }
   }
   if ($proc.HasExited) { break }
   Start-Sleep 1
 }
 if (-not $ready) {
+  if ($appUrl) { Say "Detected URL: $appUrl / Probe error: $lastProbeError" }
+  else { Say 'No local URL found in server.log.' }
+  # Only stop the process started by this invocation, never unrelated Node apps.
+  if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue }
   Say '启动失败或超时。服务日志开头: / Startup failed or timed out. First lines of the server logs:'
   Get-Content $serverErrLog -TotalCount 12 -ErrorAction SilentlyContinue | ForEach-Object { Say $_ }
   Get-Content $serverLog -TotalCount 12 -ErrorAction SilentlyContinue | ForEach-Object { Say $_ }
