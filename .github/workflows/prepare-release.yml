@@ -1,51 +1,38 @@
-name: Prepare release draft
+name: Publish approved v0.5.3
 on:
   push:
     branches: [fix/windows-startup-issue-3]
 permissions:
   contents: write
 jobs:
-  prepare:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
         with:
-          node-version: '22.20.0'
-      - run: npm ci
-      - run: npm run check
-      - name: Build exact source archive and verify
-        run: |
-          test "$(node -p "require('./package.json').version")" = "0.5.3"
-          git archive --format=zip --prefix=lapian-notes/ HEAD -o lapian-notes-v0.5.3.zip
-          python3 - <<'PY'
-          import zipfile, subprocess, json
-          with zipfile.ZipFile('lapian-notes-v0.5.3.zip') as z:
-              files = [n.removeprefix('lapian-notes/') for n in z.namelist() if not n.endswith('/')]
-              tracked = subprocess.check_output(['git','ls-tree','-r','--name-only','HEAD'],text=True).splitlines()
-              assert sorted(files) == sorted(tracked)
-              pkg = json.loads(z.read('lapian-notes/package.json'))
-              lock = json.loads(z.read('lapian-notes/package-lock.json'))
-              assert pkg['version'] == lock['version'] == lock['packages']['']['version'] == '0.5.3'
-              assert b'\r' not in z.read('lapian-notes/run.command')
-              for f in ['run.bat','setup.ps1']:
-                  b = z.read('lapian-notes/' + f)
-                  assert b'\r\n' in b and b'\n' not in b.replace(b'\r\n', b'')
-              print('Archive file list, version and line endings verified')
-          PY
-          sha256sum lapian-notes-v0.5.3.zip > SHA256SUMS.txt
-      - name: Create draft only
+          ref: 6fe00381e20e7f5a7bd391097091f398e16f86fd
+      - name: Verify existing package and publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > release-notes.txt <<'NOTES'
-          修复 Windows 下 Vite 已启动却被误判为启动失败的问题。
-          清理地址中的终端颜色字符，支持实际端口识别，本地检测绕过代理，失败时清理本次进程并输出诊断。
-          
-          Windows Server 2025 上 PowerShell 5.1 的安装和启动测试已通过，包含彩色日志与端口切换。
-          发布前仍需按 RELEASING.md 完成 Windows/macOS 桌面启动、浏览器及影片抽帧验证。
-          此版本保持草稿，尚未公开发布。
+          gh release download v0.5.3 --pattern lapian-notes-v0.5.3.zip --pattern SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          git archive --format=zip --prefix=lapian-notes/ HEAD -o expected.zip
+          cmp expected.zip lapian-notes-v0.5.3.zip
+          cat > notes.txt <<'NOTES'
+          修复 Windows 下服务已启动却提示启动失败的问题。
+
+          - 清理 Vite 输出中的颜色控制字符，正确识别启动地址。
+          - 支持端口被占用后自动切换。
+          - 本地检测绕过系统代理，失败时显示具体错误并停止本次进程。
+
+          已通过完整 CI、打包校验，以及 Windows Server 2025 / PowerShell 5.1 的依赖安装、彩色日志、5173 与 5174 启动验证。
+          Windows 11 用户机器、macOS 桌面启动及浏览器影片抽帧尚未完成实测，本次按维护者明确指示发布。
+
+          下载附件 lapian-notes-v0.5.3.zip，解压后 Windows 运行 run.bat，macOS 运行 run.command。
+
+          SHA256:
           NOTES
-          cat SHA256SUMS.txt >> release-notes.txt
-          gh release create v0.5.3 lapian-notes-v0.5.3.zip SHA256SUMS.txt --draft --target "$GITHUB_SHA" --title "v0.5.3 Windows 启动修复" --notes-file release-notes.txt
+          cat SHA256SUMS.txt >> notes.txt
+          gh release edit v0.5.3 --target 6fe00381e20e7f5a7bd391097091f398e16f86fd --draft=false --latest --notes-file notes.txt
